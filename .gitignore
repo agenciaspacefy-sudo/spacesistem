@@ -1,0 +1,27 @@
+# Dependências
+node_modules/
+
+# Build
+backend/dist/
+frontend/dist/
+
+# Banco de dados local (em prod usar volume persistente via DB_PATH)
+backend/spacefy.db
+backend/spacefy.db-shm
+backend/spacefy.db-wal
+
+# Variáveis de ambiente
+.env
+backend/.env
+frontend/.env
+*.local
+
+# Logs
+*.log
+npm-debug.log*
+
+# Editores
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db

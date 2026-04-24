@@ -140,13 +140,14 @@ function PlanosSection() {
             <li>Notificações automáticas no WhatsApp</li>
             <li>Suporte por e-mail</li>
           </ul>
-          <button
-            type="button"
+          <a
+            href="https://buy.stripe.com/bJecN53WU2wT5lO2n97ss06"
+            target="_blank"
+            rel="noopener noreferrer"
             className="plano-btn"
-            onClick={(e) => { e.preventDefault(); alert('Em breve: checkout automático. Por enquanto, fale com a Spacefy.'); }}
           >
             Assinar mensal
-          </button>
+          </a>
         </div>
 
         {/* Anual */}
@@ -170,13 +171,14 @@ function PlanosSection() {
             <li>Notificações automáticas no WhatsApp</li>
             <li>Suporte prioritário</li>
           </ul>
-          <button
-            type="button"
+          <a
+            href="https://buy.stripe.com/aFafZheBy0oL5lO6Dp7ss07"
+            target="_blank"
+            rel="noopener noreferrer"
             className="plano-btn"
-            onClick={(e) => { e.preventDefault(); alert('Em breve: checkout automático. Por enquanto, fale com a Spacefy.'); }}
           >
             Assinar anual
-          </button>
+          </a>
         </div>
       </div>
     </div>

@@ -4010,6 +4010,9 @@ html[data-public-report='true'] body {
 
 .plano-btn {
   margin-top: auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   width: 100%;
   padding: 12px 18px;
   border-radius: 10px;
@@ -4022,9 +4025,13 @@ html[data-public-report='true'] body {
   transition: filter 0.12s, transform 0.08s;
   letter-spacing: 0.2px;
   font-family: inherit;
+  text-decoration: none;
+  text-align: center;
+  box-sizing: border-box;
 }
-.plano-btn:hover { filter: brightness(1.08); }
+.plano-btn:hover { filter: brightness(1.08); color: #fff; text-decoration: none; }
 .plano-btn:active { transform: translateY(1px); }
+.plano-btn:visited { color: #fff; }
 
 /* =========================================================
    Feedback widget (fixo bottom-right)

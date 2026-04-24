@@ -3,10 +3,10 @@ import autoTable from 'jspdf-autotable';
 import { formatBRL, formatDate, monthLabel, todayISO } from './utils.js';
 
 const COLORS = {
-  text: [26, 25, 23],
-  dim: [119, 119, 112],
-  line: [221, 216, 206],
-  accent: [217, 119, 87], // #D97757 SpaceSystem
+  text: [28, 28, 28],       // #1C1C1C
+  dim: [107, 107, 107],     // #6B6B6B
+  line: [229, 229, 226],    // #E5E5E2
+  accent: [27, 111, 238],   // #1B6FEE SpaceSystem
   green: [22, 163, 74],
   red: [220, 38, 38]
 };
@@ -25,7 +25,7 @@ function detectImageFormat(dataUrl) {
 }
 
 function drawLogoFallback(doc, x, y, size) {
-  // Círculo laranja SpaceSystem com tracinho = satélite
+  // Círculo azul SpaceSystem com tracinho = satélite
   setColor(doc, 'setFillColor', COLORS.accent);
   doc.circle(x + size / 2, y + size / 2, size / 3, 'F');
   doc.setTextColor(255, 255, 255);

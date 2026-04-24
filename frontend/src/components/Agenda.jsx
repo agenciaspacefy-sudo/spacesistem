@@ -12,12 +12,12 @@ import { useConfirm } from '../ConfirmContext.jsx';
 
 // ---------- Paleta de cores disponíveis ----------
 const CORES = [
-  { id: '#D97757', label: 'Laranja' },
+  { id: '#1B6FEE', label: 'Azul' },
   { id: '#16A34A', label: 'Verde' },
-  { id: '#2563EB', label: 'Azul' },
   { id: '#9333EA', label: 'Roxo' },
   { id: '#DC2626', label: 'Vermelho' },
-  { id: '#F59E0B', label: 'Âmbar' }
+  { id: '#F59E0B', label: 'Âmbar' },
+  { id: '#D97757', label: 'Laranja' }
 ];
 
 const REPETICOES = [
@@ -164,7 +164,7 @@ function EventoBloco({ evento, top, height, onClick, compact }) {
   const style = {
     top,
     height: Math.max(height, 22),
-    background: evento.cor || '#D97757',
+    background: evento.cor || '#1B6FEE',
     transform: transform ? `translate3d(${transform.x}px, ${transform.y}px, 0)` : undefined,
     opacity: isDragging ? 0.5 : 1,
     cursor: 'grab'
@@ -213,7 +213,7 @@ function EventoModal({ evento, clientes, onClose, onSave, onDelete }) {
     titulo: evento?.titulo ?? '',
     inicio: evento?.inicio ?? toISOLocal(new Date()),
     fim: evento?.fim ?? toISOLocal(new Date(Date.now() + 60 * 60 * 1000)),
-    cor: evento?.cor ?? '#D97757',
+    cor: evento?.cor ?? '#1B6FEE',
     descricao: evento?.descricao ?? '',
     cliente_id: evento?.cliente_id ?? '',
     repeticao: evento?.repeticao ?? 'nao'
@@ -616,7 +616,7 @@ export default function Agenda() {
                     <div
                       key={`${o.id}-${o._inicio.getTime()}`}
                       className="agenda-mes-pill"
-                      style={{ background: o.cor || '#D97757' }}
+                      style={{ background: o.cor || '#1B6FEE' }}
                       onClick={(e) => { e.stopPropagation(); handleOpenEvento(o); }}
                       title={`${o.titulo} · ${formatHoraRange(o._inicio, o._fim)}`}
                     >

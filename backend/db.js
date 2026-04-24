@@ -100,7 +100,7 @@ db.exec(`
     descricao TEXT,
     inicio TEXT NOT NULL,
     fim TEXT NOT NULL,
-    cor TEXT DEFAULT '#D97757',
+    cor TEXT DEFAULT '#1B6FEE',
     cliente_id INTEGER,
     repeticao TEXT DEFAULT 'nao',
     created_at TEXT DEFAULT (datetime('now'))

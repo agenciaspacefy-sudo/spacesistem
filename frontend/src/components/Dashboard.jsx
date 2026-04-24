@@ -177,8 +177,8 @@ export default function Dashboard({ onNavigate }) {
             <BarChart data={chartData} margin={{ top: 8, right: 12, left: 0, bottom: 0 }}>
               <defs>
                 <linearGradient id="dash-recebido" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="#D97757" stopOpacity={0.95} />
-                  <stop offset="100%" stopColor="#D97757" stopOpacity={0.55} />
+                  <stop offset="0%" stopColor="#1B6FEE" stopOpacity={0.95} />
+                  <stop offset="100%" stopColor="#4B8FF5" stopOpacity={0.55} />
                 </linearGradient>
               </defs>
               <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />

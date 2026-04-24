@@ -240,19 +240,19 @@ export default function RelatorioPublico({ token }) {
             <div className="rp-chart-wrap">
               <ResponsiveContainer width="100%" height={260}>
                 <LineChart data={chartData} margin={{ top: 10, right: 24, left: 0, bottom: 0 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#EEEAE4" />
-                  <XAxis dataKey="mes" stroke="#6B6762" tick={{ fill: '#6B6762', fontSize: 12 }} />
-                  <YAxis stroke="#6B6762" tick={{ fill: '#6B6762', fontSize: 12 }} tickFormatter={(v) => `${v}x`} />
+                  <CartesianGrid strokeDasharray="3 3" stroke="#E5E5E2" />
+                  <XAxis dataKey="mes" stroke="#6B6B6B" tick={{ fill: '#6B6B6B', fontSize: 12 }} />
+                  <YAxis stroke="#6B6B6B" tick={{ fill: '#6B6B6B', fontSize: 12 }} tickFormatter={(v) => `${v}x`} />
                   <Tooltip
-                    contentStyle={{ background: '#FFF', border: '1px solid #E6E1D9', borderRadius: 8, fontSize: 13 }}
+                    contentStyle={{ background: '#FFFFFF', border: '1px solid #E5E5E2', borderRadius: 8, fontSize: 13 }}
                     formatter={(v) => [`${Number(v).toFixed(2)}x`, 'ROAS']}
                   />
                   <Line
                     type="monotone"
                     dataKey="ROAS"
-                    stroke="#D97757"
+                    stroke="#1B6FEE"
                     strokeWidth={2.5}
-                    dot={{ r: 4, fill: '#D97757' }}
+                    dot={{ r: 4, fill: '#1B6FEE' }}
                     activeDot={{ r: 6 }}
                   />
                 </LineChart>

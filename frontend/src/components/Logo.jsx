@@ -26,7 +26,7 @@ export default function Logo({ customUrl }) {
 // Network-style SVG mark — ícone oficial SpaceSystem.
 // As linhas começam na borda do núcleo (não em 0,0) para não cruzar o círculo central.
 // `bg` controla o recorte do núcleo — por padrão usa a var do tema, então funciona em dark/light.
-export function LogoMark({ size = 40, color = '#D97757', bg = 'var(--color-bg, #111110)' }) {
+export function LogoMark({ size = 40, color = '#1B6FEE', bg = 'var(--color-bg, #131314)' }) {
   return (
     <svg
       width={size}

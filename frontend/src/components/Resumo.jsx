@@ -1,11 +1,17 @@
 import { useEffect, useMemo, useState } from 'react';
 import { api } from '../api/client.js';
-import { formatBRL, monthLabel } from '../utils.js';
+import { monthLabel } from '../utils.js';
+import { useFormatBRL } from '../PrivacyContext.jsx';
+import { useSettings } from '../SettingsContext.jsx';
+import { generateMonthlyReport } from '../reportPdf.js';
 import RevenueChart from './RevenueChart.jsx';
 
 export default function Resumo({ mesFiltro }) {
+  const fmtBRL = useFormatBRL();
+  const { settings } = useSettings();
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [exporting, setExporting] = useState(false);
 
   async function load() {
     setLoading(true);
@@ -33,20 +39,44 @@ export default function Resumo({ mesFiltro }) {
     return { receita, gastos, lucro, margem };
   }, [filtradas]);
 
+  async function handleExportPdf() {
+    setExporting(true);
+    try {
+      // Se há filtro de mês, busca detalhamentos daquele mês; senão passa vazio.
+      const [recs, gas] = mesFiltro
+        ? await Promise.all([
+            api.listRecebimentos(mesFiltro).catch(() => []),
+            api.listGastos(mesFiltro).catch(() => [])
+          ])
+        : [[], []];
+      generateMonthlyReport({
+        resumoRows: rows,
+        recebimentos: recs,
+        gastos: gas,
+        mesFiltro,
+        settings
+      });
+    } catch (e) {
+      alert('Erro ao gerar PDF: ' + (e?.message || e));
+    } finally {
+      setExporting(false);
+    }
+  }
+
   return (
     <div>
       <div className="cards">
         <div className="card">
           <div className="card-label">Receita recebida</div>
-          <div className="card-value pos">{formatBRL(totais.receita)}</div>
+          <div className="card-value pos">{fmtBRL(totais.receita)}</div>
         </div>
         <div className="card">
           <div className="card-label">Total gastos</div>
-          <div className="card-value neg">{formatBRL(totais.gastos)}</div>
+          <div className="card-value neg">{fmtBRL(totais.gastos)}</div>
         </div>
         <div className="card">
           <div className="card-label">Lucro líquido</div>
-          <div className={`card-value ${totais.lucro >= 0 ? 'pos' : 'neg'}`}>{formatBRL(totais.lucro)}</div>
+          <div className={`card-value ${totais.lucro >= 0 ? 'pos' : 'neg'}`}>{fmtBRL(totais.lucro)}</div>
         </div>
         <div className="card">
           <div className="card-label">Margem</div>
@@ -69,6 +99,14 @@ export default function Resumo({ mesFiltro }) {
         <div className="toolbar-right">
           <button className="btn" onClick={load}>
             Atualizar
+          </button>
+          <button
+            className="btn btn-primary"
+            onClick={handleExportPdf}
+            disabled={exporting || rows.length === 0}
+            title="Exporta relatório em PDF"
+          >
+            {exporting ? 'Gerando…' : '↓ Exportar PDF'}
           </button>
         </div>
       </div>
@@ -110,17 +148,17 @@ export default function Resumo({ mesFiltro }) {
                     </td>
                     <td>
                       <div className="cell mono" style={{ justifyContent: 'flex-end' }}>
-                        {formatBRL(r.receita)}
+                        {fmtBRL(r.receita)}
                       </div>
                     </td>
                     <td>
                       <div className="cell mono" style={{ justifyContent: 'flex-end' }}>
-                        {formatBRL(r.gastos)}
+                        {fmtBRL(r.gastos)}
                       </div>
                     </td>
                     <td>
                       <div className={`cell mono ${lucroCls}`} style={{ justifyContent: 'flex-end' }}>
-                        {formatBRL(r.lucro)}
+                        {fmtBRL(r.lucro)}
                       </div>
                     </td>
                     <td>
@@ -142,12 +180,12 @@ export default function Resumo({ mesFiltro }) {
                 </td>
                 <td>
                   <div className="cell mono pos" style={{ justifyContent: 'flex-end', fontWeight: 600 }}>
-                    {formatBRL(totais.receita)}
+                    {fmtBRL(totais.receita)}
                   </div>
                 </td>
                 <td>
                   <div className="cell mono neg" style={{ justifyContent: 'flex-end', fontWeight: 600 }}>
-                    {formatBRL(totais.gastos)}
+                    {fmtBRL(totais.gastos)}
                   </div>
                 </td>
                 <td>
@@ -155,7 +193,7 @@ export default function Resumo({ mesFiltro }) {
                     className={`cell mono ${totais.lucro >= 0 ? 'pos' : 'neg'}`}
                     style={{ justifyContent: 'flex-end', fontWeight: 600 }}
                   >
-                    {formatBRL(totais.lucro)}
+                    {fmtBRL(totais.lucro)}
                   </div>
                 </td>
                 <td>

@@ -3,6 +3,17 @@ export function formatBRL(value) {
   return n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 }
 
+// ---------- Máscaras do modo privacidade (👁) ----------
+// Usadas APENAS em telas de exibição. Exports (PDF/WhatsApp) continuam com
+// o valor real via formatBRL / cob.cliente_whatsapp / cob.cliente_cnpj.
+export const MASKED_BRL = 'R$ ••••••';
+export const MASKED_CNPJ = '••.•••.•••/••••-••';
+export const MASKED_WHATSAPP = '•• •••••-••••';
+
+export function maskBRL() { return MASKED_BRL; }
+export function maskCnpj(value) { return value ? MASKED_CNPJ : ''; }
+export function maskWhatsapp(value) { return value ? MASKED_WHATSAPP : ''; }
+
 export function formatNumber(value) {
   const n = Number(value) || 0;
   return n.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });

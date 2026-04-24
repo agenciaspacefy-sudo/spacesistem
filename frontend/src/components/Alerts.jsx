@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { api } from '../api/client.js';
-import { formatBRL, formatDate, todayISO } from '../utils.js';
+import { formatDate, todayISO } from '../utils.js';
+import { useFormatBRL } from '../PrivacyContext.jsx';
 
 const POLL_MS = 5 * 60 * 1000; // 5 minutos
 
@@ -48,6 +49,7 @@ function classifyTarefa(t, hoje) {
 }
 
 export default function Alerts({ onNavigate }) {
+  const fmtBRL = useFormatBRL();
   const [open, setOpen] = useState(false);
   const [cobrancas, setCobrancas] = useState([]);
   const [tarefas, setTarefas] = useState([]);
@@ -194,7 +196,7 @@ export default function Alerts({ onNavigate }) {
                         </span>
                       </span>
                       <span className="alert-item-sub">
-                        {formatBRL(c.valor)} • {c.vencimento ? formatDate(c.vencimento) : '—'}
+                        {fmtBRL(c.valor)} • {c.vencimento ? formatDate(c.vencimento) : '—'}
                       </span>
                     </span>
                   </button>

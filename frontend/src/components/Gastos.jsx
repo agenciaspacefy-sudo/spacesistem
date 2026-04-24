@@ -1,7 +1,9 @@
 import { useEffect, useMemo, useState } from 'react';
 import { api } from '../api/client.js';
-import { formatBRL, todayISO, currentMonth } from '../utils.js';
+import { todayISO, currentMonth } from '../utils.js';
 import EditableCell from './EditableCell.jsx';
+import { useConfirm } from '../ConfirmContext.jsx';
+import { useFormatBRL } from '../PrivacyContext.jsx';
 
 const CATEGORIAS = [
   'Ferramentas',
@@ -17,6 +19,8 @@ const CATEGORIAS = [
 const FORMAS = ['PIX', 'Cartão', 'Boleto', 'Dinheiro', 'Transferência'];
 
 export default function Gastos({ mesFiltro }) {
+  const confirm = useConfirm();
+  const fmtBRL = useFormatBRL();
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(false);
   const [showForm, setShowForm] = useState(false);
@@ -65,7 +69,18 @@ export default function Gastos({ mesFiltro }) {
   }
 
   async function handleDelete(id) {
-    if (!confirm('Excluir este gasto?')) return;
+    const g = rows.find((r) => r.id === id);
+    const ok = await confirm({
+      message: (
+        <>
+          Tem certeza que deseja excluir este gasto?
+          {g && (
+            <><br /><strong>{g.categoria}</strong>{g.descricao ? ` — ${g.descricao}` : ''}{g.valor ? ` · ${fmtBRL(g.valor)}` : ''}</>
+          )}
+        </>
+      )
+    });
+    if (!ok) return;
     await api.deleteGasto(id);
     setRows((rs) => rs.filter((r) => r.id !== id));
   }
@@ -82,12 +97,12 @@ export default function Gastos({ mesFiltro }) {
       <div className="cards">
         <div className="card">
           <div className="card-label">Total gastos</div>
-          <div className="card-value neg">{formatBRL(total)}</div>
+          <div className="card-value neg">{fmtBRL(total)}</div>
         </div>
         {porCategoria.map(([cat, val]) => (
           <div className="card" key={cat}>
             <div className="card-label">{cat}</div>
-            <div className="card-value">{formatBRL(val)}</div>
+            <div className="card-value">{fmtBRL(val)}</div>
           </div>
         ))}
       </div>

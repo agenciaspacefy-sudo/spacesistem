@@ -1,4 +1,4 @@
-// Web Push Notifications — SpaceSistem
+// Web Push Notifications — SpaceSystem
 // Uses Service Worker registration so notifications can appear when the
 // tab is not focused (minimized, in background, or on another tab).
 

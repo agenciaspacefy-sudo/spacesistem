@@ -9,6 +9,7 @@ import {
 } from '@dnd-kit/core';
 import { api } from '../api/client.js';
 import { formatDate, todayISO } from '../utils.js';
+import { useConfirm } from '../ConfirmContext.jsx';
 
 const COLUNAS = [
   { id: 'A Fazer', label: 'A Fazer' },
@@ -166,6 +167,7 @@ function Coluna({ coluna, tarefas, onDelete, onMoveNext, onEdit }) {
 }
 
 export default function Tarefas() {
+  const confirm = useConfirm();
   const [tarefas, setTarefas] = useState([]);
   const [clientes, setClientes] = useState([]);
   const [showForm, setShowForm] = useState(false);
@@ -202,7 +204,15 @@ export default function Tarefas() {
   }
 
   async function handleDelete(tarefa) {
-    if (!confirm(`Excluir a tarefa "${tarefa.titulo}"?`)) return;
+    const ok = await confirm({
+      message: (
+        <>
+          Tem certeza que deseja excluir esta tarefa?
+          <br /><strong>{tarefa.titulo}</strong>
+        </>
+      )
+    });
+    if (!ok) return;
     await api.deleteTarefa(tarefa.id);
     setTarefas((ts) => ts.filter((t) => t.id !== tarefa.id));
   }

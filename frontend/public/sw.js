@@ -1,4 +1,4 @@
-// SpaceSistem service worker — handles local & push notifications
+// SpaceSystem service worker — handles local & push notifications
 // Version: v1
 
 self.addEventListener('install', () => {
@@ -15,7 +15,7 @@ self.addEventListener('activate', (event) => {
 self.addEventListener('message', (event) => {
   const data = event.data || {};
   if (data.type === 'spacefy-notify') {
-    const { title = 'SpaceSistem', options = {} } = data.payload || {};
+    const { title = 'SpaceSystem', options = {} } = data.payload || {};
     event.waitUntil(self.registration.showNotification(title, options));
   }
 });
@@ -24,7 +24,7 @@ self.addEventListener('message', (event) => {
 self.addEventListener('push', (event) => {
   let data = {};
   try { data = event.data ? event.data.json() : {}; } catch (_) { data = {}; }
-  const title = data.title || 'SpaceSistem';
+  const title = data.title || 'SpaceSystem';
   const options = {
     body: data.body || '',
     icon: data.icon,

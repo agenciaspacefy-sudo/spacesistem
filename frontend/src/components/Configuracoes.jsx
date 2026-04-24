@@ -101,6 +101,84 @@ export default function Configuracoes() {
         <button className="btn btn-primary" type="submit">Salvar configurações</button>
         {savedFlash && <span style={{ color: 'var(--green)', fontSize: 13 }}>✓ Salvo</span>}
       </div>
+
+      <PlanosSection />
     </form>
+  );
+}
+
+// --------------- Seção de planos ---------------
+function PlanosSection() {
+  const mensal = 109.90;
+  const anualTotal = 899.90;
+  const anualNoMes = anualTotal / 12;
+  const economia = (mensal * 12) - anualTotal; // R$ 418,90
+
+  const fmt = (v) =>
+    v.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+  return (
+    <div className="planos-section">
+      <div className="planos-header">
+        <h3>Escolha o seu plano</h3>
+        <p>Desbloqueie todos os recursos do SpaceSystem.</p>
+      </div>
+
+      <div className="planos-grid">
+        {/* Mensal */}
+        <div className="plano-card">
+          <div className="plano-nome">Mensal</div>
+          <div className="plano-preco">
+            <span className="plano-preco-moeda">R$</span>
+            <span className="plano-preco-valor">{fmt(mensal)}</span>
+            <span className="plano-preco-periodo">/mês</span>
+          </div>
+          <div className="plano-desconto">Flexibilidade total, cancele quando quiser.</div>
+          <ul className="plano-features">
+            <li>Todos os módulos financeiros e operacionais</li>
+            <li>Relatórios públicos ilimitados por cliente</li>
+            <li>Notificações automáticas no WhatsApp</li>
+            <li>Suporte por e-mail</li>
+          </ul>
+          <button
+            type="button"
+            className="plano-btn"
+            onClick={(e) => { e.preventDefault(); alert('Em breve: checkout automático. Por enquanto, fale com a Spacefy.'); }}
+          >
+            Assinar mensal
+          </button>
+        </div>
+
+        {/* Anual */}
+        <div className="plano-card plano-card-destaque">
+          <span className="plano-badge">Mais popular</span>
+          <div className="plano-nome">Anual</div>
+          <div className="plano-preco">
+            <span className="plano-preco-moeda">R$</span>
+            <span className="plano-preco-valor">{fmt(anualTotal)}</span>
+            <span className="plano-preco-periodo">/ano</span>
+          </div>
+          <div className="plano-desconto">
+            <s>R$ {fmt(mensal * 12)}</s>
+            <span>•</span>
+            <strong>Economize R$ {fmt(economia)}</strong>
+          </div>
+          <ul className="plano-features">
+            <li>Equivale a R$ {fmt(anualNoMes)}/mês</li>
+            <li>Todos os módulos financeiros e operacionais</li>
+            <li>Relatórios públicos ilimitados por cliente</li>
+            <li>Notificações automáticas no WhatsApp</li>
+            <li>Suporte prioritário</li>
+          </ul>
+          <button
+            type="button"
+            className="plano-btn"
+            onClick={(e) => { e.preventDefault(); alert('Em breve: checkout automático. Por enquanto, fale com a Spacefy.'); }}
+          >
+            Assinar anual
+          </button>
+        </div>
+      </div>
+    </div>
   );
 }

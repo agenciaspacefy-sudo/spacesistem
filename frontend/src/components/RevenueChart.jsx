@@ -1,7 +1,9 @@
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis, Legend } from 'recharts';
-import { formatBRL, lastNMonths, monthLabel } from '../utils.js';
+import { lastNMonths, monthLabel } from '../utils.js';
+import { useFormatBRL, usePrivacy } from '../PrivacyContext.jsx';
 
 function CustomTooltip({ active, payload, label }) {
+  const fmtBRL = useFormatBRL();
   if (!active || !payload || !payload.length) return null;
   return (
     <div className="chart-tooltip">
@@ -10,7 +12,7 @@ function CustomTooltip({ active, payload, label }) {
         <div key={p.dataKey} className="chart-tooltip-row">
           <span className="chart-tooltip-dot" style={{ background: p.color }} />
           <span>{p.name}:</span>
-          <strong className="mono">{formatBRL(p.value)}</strong>
+          <strong className="mono">{fmtBRL(p.value)}</strong>
         </div>
       ))}
     </div>
@@ -18,6 +20,7 @@ function CustomTooltip({ active, payload, label }) {
 }
 
 export default function RevenueChart({ resumo }) {
+  const { privacy } = usePrivacy();
   const meses = lastNMonths(12);
   const byMonth = new Map((resumo || []).map((r) => [r.mes, r]));
   const data = meses.map((m) => {
@@ -62,6 +65,7 @@ export default function RevenueChart({ resumo }) {
               tickLine={false}
               axisLine={{ stroke: 'var(--border)' }}
               tickFormatter={(v) => {
+                if (privacy) return 'R$ •••';
                 if (v >= 1000) return `R$${(v / 1000).toFixed(0)}k`;
                 return `R$${v}`;
               }}

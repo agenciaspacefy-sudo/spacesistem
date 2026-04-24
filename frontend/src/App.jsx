@@ -1,29 +1,43 @@
 import { useEffect, useState } from 'react';
+import Dashboard from './components/Dashboard.jsx';
 import Recebimentos from './components/Recebimentos.jsx';
 import Gastos from './components/Gastos.jsx';
 import Resumo from './components/Resumo.jsx';
 import Clientes from './components/Clientes.jsx';
 import Cobrancas from './components/Cobrancas.jsx';
 import Tarefas from './components/Tarefas.jsx';
+import Agenda from './components/Agenda.jsx';
+import Campanhas from './components/Campanhas.jsx';
+import Notas from './components/Notas.jsx';
 import Configuracoes from './components/Configuracoes.jsx';
 import AuthScreen from './components/AuthScreen.jsx';
-import Logo from './components/Logo.jsx';
 import Alerts from './components/Alerts.jsx';
+import Calculator from './components/Calculator.jsx';
+import FeedbackWidget from './components/FeedbackWidget.jsx';
+import RelatorioPublico from './components/RelatorioPublico.jsx';
+import Sidebar, { SidebarMobileToggle } from './components/Sidebar.jsx';
 import { SettingsProvider, useSettings } from './SettingsContext.jsx';
 import { AuthProvider, useAuth } from './AuthContext.jsx';
+import { ConfirmProvider } from './ConfirmContext.jsx';
+import { PrivacyProvider, usePrivacy } from './PrivacyContext.jsx';
 import { currentMonth } from './utils.js';
 import { registerServiceWorker, requestNotificationPermission } from './notifications.js';
 
-const TABS = [
-  { id: 'recebimentos', label: 'Recebimentos' },
-  { id: 'gastos', label: 'Gastos' },
-  { id: 'clientes', label: 'Clientes' },
-  { id: 'cobrancas', label: 'Cobranças' },
-  { id: 'resumo', label: 'Resumo Mensal' },
-  { id: 'tarefas', label: 'Tarefas' }
-];
-
 const TABS_WITH_MES = new Set(['recebimentos', 'gastos', 'resumo']);
+
+const PAGE_TITLES = {
+  dashboard: 'Dashboard',
+  recebimentos: 'Recebimentos',
+  gastos: 'Gastos',
+  clientes: 'Clientes',
+  cobrancas: 'Cobranças',
+  campanhas: 'Campanhas',
+  tarefas: 'Tarefas',
+  agenda: 'Agenda',
+  notas: 'Notas',
+  resumo: 'Resumo Mensal',
+  config: 'Configurações'
+};
 
 function useTheme() {
   const [theme, setTheme] = useState(() => {
@@ -39,48 +53,69 @@ function useTheme() {
   return [theme, () => setTheme((t) => (t === 'dark' ? 'light' : 'dark'))];
 }
 
-function SunIcon() {
+function EyeIcon() {
   return (
     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <circle cx="12" cy="12" r="4" />
-      <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41" />
-    </svg>
-  );
-}
-
-function MoonIcon() {
-  return (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
-    </svg>
-  );
-}
-
-function LogoutIcon() {
-  return (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
-      <polyline points="16 17 21 12 16 7" />
-      <line x1="21" y1="12" x2="9" y2="12" />
-    </svg>
-  );
-}
-
-function GearIcon() {
-  return (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
       <circle cx="12" cy="12" r="3" />
-      <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
     </svg>
+  );
+}
+
+function EyeOffIcon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24" />
+      <line x1="1" y1="1" x2="23" y2="23" />
+    </svg>
+  );
+}
+
+function PrivacyToggle() {
+  const { privacy, togglePrivacy } = usePrivacy();
+  return (
+    <button
+      className={`theme-toggle ${privacy ? 'active' : ''}`}
+      onClick={togglePrivacy}
+      title={privacy ? 'Mostrar valores' : 'Ocultar valores'}
+      aria-pressed={privacy}
+      aria-label={privacy ? 'Mostrar valores ocultos' : 'Ocultar valores sensíveis'}
+    >
+      {privacy ? <EyeOffIcon /> : <EyeIcon />}
+    </button>
+  );
+}
+
+function Clock() {
+  const [now, setNow] = useState(() => new Date());
+
+  useEffect(() => {
+    const id = setInterval(() => setNow(new Date()), 1000);
+    return () => clearInterval(id);
+  }, []);
+
+  const hh = String(now.getHours()).padStart(2, '0');
+  const mm = String(now.getMinutes()).padStart(2, '0');
+  const ss = String(now.getSeconds()).padStart(2, '0');
+
+  return (
+    <span
+      className="topbar-clock"
+      role="timer"
+      aria-live="off"
+      title="Hora atual"
+    >
+      {hh}:{mm}:{ss}
+    </span>
   );
 }
 
 function AppShell() {
-  const [tab, setTab] = useState('recebimentos');
+  const [tab, setTab] = useState('dashboard');
   const [mesFiltro, setMesFiltro] = useState(currentMonth());
   const [theme, toggleTheme] = useTheme();
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const { settings } = useSettings();
-  const { user, logout } = useAuth();
 
   // Registrar service worker e pedir permissão de notificação uma vez
   useEffect(() => {
@@ -91,74 +126,62 @@ function AppShell() {
   }, []);
 
   const showMesFilter = TABS_WITH_MES.has(tab);
+  const pageTitle = PAGE_TITLES[tab] || '';
 
   return (
-    <div className="app">
-      <header className="header">
-        <Logo customUrl={settings.logo_data || null} />
-        <div className="header-actions">
-          {user && (
-            <div className="user-chip" title={user.email}>
-              {user.avatar && <img src={user.avatar} alt="" className="user-avatar" />}
-              <span className="user-name">{user.nome}</span>
-            </div>
-          )}
-          <Alerts onNavigate={setTab} />
-          <button
-            className="theme-toggle"
-            onClick={toggleTheme}
-            title={theme === 'dark' ? 'Mudar para tema claro' : 'Mudar para tema escuro'}
-          >
-            {theme === 'dark' ? <SunIcon /> : <MoonIcon />}
-          </button>
-          <button
-            className={`theme-toggle ${tab === 'config' ? 'active' : ''}`}
-            onClick={() => setTab('config')}
-            title="Configurações"
-          >
-            <GearIcon />
-          </button>
-          <button
-            className="theme-toggle"
-            onClick={logout}
-            title="Sair"
-          >
-            <LogoutIcon />
-          </button>
-        </div>
-      </header>
+    <div className="app app-with-sidebar">
+      <Sidebar
+        tab={tab}
+        onTab={setTab}
+        theme={theme}
+        onToggleTheme={toggleTheme}
+        mobileOpen={mobileNavOpen}
+        onCloseMobile={() => setMobileNavOpen(false)}
+      />
 
-      <nav className="tabs">
-        {TABS.map((t) => (
-          <button key={t.id} className={`tab ${tab === t.id ? 'active' : ''}`} onClick={() => setTab(t.id)}>
-            {t.label}
-          </button>
-        ))}
-      </nav>
-
-      {showMesFilter && (
-        <div className="toolbar">
-          <div className="toolbar-left">
-            <span className="label">Filtrar por mês</span>
-            <input type="month" value={mesFiltro} onChange={(e) => setMesFiltro(e.target.value)} />
-            {mesFiltro && (
-              <button className="btn btn-ghost btn-sm" onClick={() => setMesFiltro('')}>
-                Limpar
-              </button>
-            )}
+      <div className="app-main">
+        <header className="topbar">
+          <div className="topbar-left">
+            <SidebarMobileToggle onClick={() => setMobileNavOpen(true)} />
+            <h1 className="topbar-title">{pageTitle}</h1>
           </div>
-        </div>
-      )}
+          <div className="topbar-actions">
+            <Clock />
+            <Calculator />
+            <Alerts onNavigate={setTab} />
+            <PrivacyToggle />
+          </div>
+        </header>
 
-      <main className="content" style={!showMesFilter ? { paddingTop: 20 } : undefined}>
-        {tab === 'recebimentos' && <Recebimentos mesFiltro={mesFiltro} />}
-        {tab === 'gastos' && <Gastos mesFiltro={mesFiltro} />}
-        {tab === 'clientes' && <Clientes />}
-        {tab === 'cobrancas' && <Cobrancas />}
-        {tab === 'tarefas' && <Tarefas />}
-        {tab === 'resumo' && <Resumo mesFiltro={mesFiltro} />}
-        {tab === 'config' && <Configuracoes />}
-      </main>
+        {showMesFilter && (
+          <div className="toolbar">
+            <div className="toolbar-left">
+              <span className="label">Filtrar por mês</span>
+              <input type="month" value={mesFiltro} onChange={(e) => setMesFiltro(e.target.value)} />
+              {mesFiltro && (
+                <button className="btn btn-ghost btn-sm" onClick={() => setMesFiltro('')}>
+                  Limpar
+                </button>
+              )}
+            </div>
+          </div>
+        )}
+
+        <main className="content" style={!showMesFilter ? { paddingTop: 20 } : undefined}>
+          {tab === 'dashboard' && <Dashboard onNavigate={setTab} />}
+          {tab === 'recebimentos' && <Recebimentos mesFiltro={mesFiltro} />}
+          {tab === 'gastos' && <Gastos mesFiltro={mesFiltro} />}
+          {tab === 'clientes' && <Clientes />}
+          {tab === 'cobrancas' && <Cobrancas />}
+          {tab === 'campanhas' && <Campanhas />}
+          {tab === 'tarefas' && <Tarefas />}
+          {tab === 'resumo' && <Resumo mesFiltro={mesFiltro} />}
+          {tab === 'agenda' && <Agenda />}
+          {tab === 'notas' && <Notas />}
+          {tab === 'config' && <Configuracoes />}
+        </main>
+      </div>
+      <FeedbackWidget />
     </div>
   );
 }
@@ -175,15 +198,29 @@ function AuthGate() {
   if (!user) return <AuthScreen />;
   return (
     <SettingsProvider>
-      <AppShell />
+      <PrivacyProvider>
+        <AppShell />
+      </PrivacyProvider>
     </SettingsProvider>
   );
 }
 
+// Router público minimalista: relatório aberto não usa AuthProvider
+// (sem toast de 401, sem sidebar, sem tema escuro forçado)
+function publicReportToken() {
+  const m = window.location.pathname.match(/^\/relatorio\/([^/?#]+)/);
+  return m ? decodeURIComponent(m[1]) : null;
+}
+
 export default function App() {
+  const token = publicReportToken();
+  if (token) return <RelatorioPublico token={token} />;
+
   return (
     <AuthProvider>
-      <AuthGate />
+      <ConfirmProvider>
+        <AuthGate />
+      </ConfirmProvider>
     </AuthProvider>
   );
 }

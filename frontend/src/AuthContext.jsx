@@ -9,15 +9,22 @@ export function AuthProvider({ children }) {
   const [googleEnabled, setGoogleEnabled] = useState(false);
 
   const reload = useCallback(async () => {
-    try {
-      const [me, cfg] = await Promise.all([auth.me(), auth.config()]);
-      setUser(me.user || null);
-      setGoogleEnabled(!!cfg.googleEnabled);
-    } catch {
-      setUser(null);
-    } finally {
-      setLoaded(true);
+    // Usamos allSettled pra garantir que uma falha (ex.: /auth/me devolvendo 500)
+    // não derrube a leitura do /auth/config — que é quem habilita o botão do Google.
+    const [meR, cfgR] = await Promise.allSettled([auth.me(), auth.config()]);
+
+    if (meR.status === 'fulfilled') setUser(meR.value?.user || null);
+    else setUser(null);
+
+    if (cfgR.status === 'fulfilled') {
+      setGoogleEnabled(!!cfgR.value?.googleEnabled);
+    } else {
+      setGoogleEnabled(false);
+      // Log pra facilitar debug em produção (DevTools → Console)
+      console.warn('[auth] Falha ao carregar /auth/config:', cfgR.reason);
     }
+
+    setLoaded(true);
   }, []);
 
   useEffect(() => { reload(); }, [reload]);

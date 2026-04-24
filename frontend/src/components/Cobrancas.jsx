@@ -10,6 +10,8 @@ import {
 } from '../utils.js';
 import { generateReceipt } from '../receipt.js';
 import { showPaymentNotification } from '../notifications.js';
+import { useConfirm } from '../ConfirmContext.jsx';
+import { useFormatBRL, useFormatCnpj } from '../PrivacyContext.jsx';
 
 function DownloadIcon() {
   return (
@@ -67,6 +69,9 @@ function TipoBadge({ value }) {
 
 export default function Cobrancas() {
   const { settings } = useSettings();
+  const confirm = useConfirm();
+  const fmtBRL = useFormatBRL();
+  const fmtCnpj = useFormatCnpj();
   const [rows, setRows] = useState([]);
   const [clientes, setClientes] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -78,8 +83,6 @@ export default function Cobrancas() {
   const [expanded, setExpanded] = useState({});
   const [editingGroup, setEditingGroup] = useState(null);
   const [savingEdit, setSavingEdit] = useState(false);
-  const [deletingGroup, setDeletingGroup] = useState(null);
-  const [savingDelete, setSavingDelete] = useState(false);
 
   function emptyForm() {
     return {
@@ -136,7 +139,20 @@ export default function Cobrancas() {
   }
 
   async function handleDelete(id) {
-    if (!confirm('Excluir esta cobrança?')) return;
+    const cob = rows.find((r) => r.id === id);
+    const ok = await confirm({
+      message: (
+        <>
+          Tem certeza que deseja excluir esta cobrança?
+          {cob && (
+            <><br /><strong>{cob.cliente_nome || 'Cliente'}</strong>
+            {cob.valor ? ` · ${fmtBRL(cob.valor)}` : ''}
+            {cob.vencimento ? ` · venc. ${formatDate(cob.vencimento)}` : ''}</>
+          )}
+        </>
+      )
+    });
+    if (!ok) return;
     await api.deleteCobranca(id);
     setRows((rs) => rs.filter((r) => r.id !== id));
   }
@@ -165,12 +181,20 @@ export default function Cobrancas() {
     });
   }
 
-  function handleSendWa(cob) {
+  async function handleSendWa(cob) {
     if (!cob.cliente_whatsapp) {
       alert('Cliente sem WhatsApp cadastrado.');
       return;
     }
     window.open(buildWaUrl(cob.cliente_whatsapp, buildMessageFor(cob)), '_blank');
+    // Registra último envio (não bloqueia reenvio)
+    try {
+      const updated = await api.marcarCobrancaEnviada(cob.id);
+      setRows((rs) => rs.map((r) => (r.id === cob.id ? updated : r)));
+    } catch (e) {
+      // falha no registro não interrompe o envio; WhatsApp já abriu
+      console.warn('Falha ao registrar envio:', e);
+    }
   }
 
   const totais = useMemo(() => {
@@ -305,10 +329,17 @@ export default function Cobrancas() {
     const novaQtdPendente = Math.max(0, duration - pagasCount);
 
     if (duration < pagasCount) {
-      const ok = confirm(
-        `Este cliente já tem ${pagasCount} cobrança(s) paga(s), maior que a nova duração (${duration}). ` +
-        `As cobranças pagas serão mantidas e nenhuma nova pendente será criada. Continuar?`
-      );
+      const ok = await confirm({
+        title: 'Confirmar alteração',
+        message: (
+          <>
+            Este cliente já tem <strong>{pagasCount}</strong> cobrança(s) paga(s), maior que a nova duração (<strong>{duration}</strong>).
+            <br />As cobranças pagas serão mantidas e nenhuma nova pendente será criada. Continuar?
+          </>
+        ),
+        confirmLabel: 'Continuar',
+        variant: 'default'
+      });
       if (!ok) return;
     }
 
@@ -344,25 +375,27 @@ export default function Cobrancas() {
     }
   }
 
-  function handleOpenDeleteGroup(g) {
-    setDeletingGroup(g);
-  }
-
-  async function handleConfirmDeleteGroup() {
-    if (!deletingGroup) return;
-    setSavingDelete(true);
-    try {
-      const ids = deletingGroup.cobrancas.map((c) => c.id);
-      for (const id of ids) {
-        await api.deleteCobranca(id);
+  async function handleOpenDeleteGroup(g) {
+    const count = g.cobrancas.length;
+    const ids = g.cobrancas.map((c) => c.id);
+    await confirm({
+      title: 'Excluir cobranças',
+      message: (
+        <>
+          Tem certeza que deseja excluir todas as cobranças deste cliente?
+          <br />
+          <strong>{g.cliente_nome}</strong> — {count} {count === 1 ? 'cobrança' : 'cobranças'}
+        </>
+      ),
+      // onConfirm roda async: o modal mostra "Excluindo…" enquanto as requests
+      // estão em andamento, e só fecha quando todas terminam (ou jogam erro).
+      onConfirm: async () => {
+        for (const id of ids) {
+          await api.deleteCobranca(id);
+        }
+        setRows((rs) => rs.filter((r) => !ids.includes(r.id)));
       }
-      setRows((rs) => rs.filter((r) => !ids.includes(r.id)));
-      setDeletingGroup(null);
-    } catch (e) {
-      alert('Erro ao excluir cobranças: ' + (e?.message || e));
-    } finally {
-      setSavingDelete(false);
-    }
+    });
   }
 
   const clientesAtivos = clientes.filter((c) => c.ativo);
@@ -372,15 +405,15 @@ export default function Cobrancas() {
       <div className="cards">
         <div className="card">
           <div className="card-label">Pendente</div>
-          <div className="card-value">{formatBRL(totais.pendente)}</div>
+          <div className="card-value">{fmtBRL(totais.pendente)}</div>
         </div>
         <div className="card">
           <div className="card-label">Atrasado</div>
-          <div className="card-value neg">{formatBRL(totais.atrasado)}</div>
+          <div className="card-value neg">{fmtBRL(totais.atrasado)}</div>
         </div>
         <div className="card">
           <div className="card-label">Recebido</div>
-          <div className="card-value pos">{formatBRL(totais.pago)}</div>
+          <div className="card-value pos">{fmtBRL(totais.pago)}</div>
         </div>
         <div className="card">
           <div className="card-label">Total cobranças</div>
@@ -543,11 +576,11 @@ export default function Cobrancas() {
                     <td>
                       <div className="cell" style={{ fontWeight: 500, flexDirection: 'column', alignItems: 'flex-start', gap: 2 }}>
                         <span>{g.cliente_nome}</span>
-                        {g.cliente_cnpj && <span style={{ fontSize: 11.5, color: 'var(--text-dim)' }}>{g.cliente_cnpj}</span>}
+                        {g.cliente_cnpj && <span style={{ fontSize: 11.5, color: 'var(--text-dim)' }}>{fmtCnpj(g.cliente_cnpj)}</span>}
                       </div>
                     </td>
                     <td><TipoBadge value={tipo} /></td>
-                    <td className="right">{formatBRL(valorMensal)}</td>
+                    <td className="right">{fmtBRL(valorMensal)}</td>
                     <td>
                       <span style={{ color: 'var(--text-dim)' }}>
                         {tipo === 'Recorrente' ? `${total} ${total === 1 ? 'mês' : 'meses'}` : `${total} ${total === 1 ? 'parcela' : 'parcelas'}`}
@@ -587,9 +620,18 @@ export default function Cobrancas() {
                                 <div className="sub-item-venc">{c.vencimento ? formatDate(c.vencimento) : '—'}</div>
                                 <div className="sub-item-desc">{c.descricao || <em style={{ color: 'var(--text-mute)' }}>Sem descrição</em>}</div>
                               </div>
-                              <div className="sub-item-valor">{formatBRL(c.valor)}</div>
+                              <div className="sub-item-valor">{fmtBRL(c.valor)}</div>
                               <div className="sub-item-status">
                                 <StatusBadge value={c.status} />
+                                {c.enviado_em && (
+                                  <span
+                                    className="badge badge-enviado"
+                                    title={`Enviado em ${formatDate(c.enviado_em.slice(0, 10))}`}
+                                    style={{ marginLeft: 6 }}
+                                  >
+                                    ✓ Enviado {formatDate(c.enviado_em.slice(0, 10))}
+                                  </span>
+                                )}
                               </div>
                               <div className="sub-item-actions">
                                 {c.status !== 'Pago' && (
@@ -644,36 +686,7 @@ export default function Cobrancas() {
         </table>
       </div>
 
-      {deletingGroup && (
-        <div className="modal-backdrop" onClick={() => !savingDelete && setDeletingGroup(null)}>
-          <div className="modal" onClick={(e) => e.stopPropagation()}>
-            <div className="modal-icon modal-icon-danger">!</div>
-            <h3>Excluir cobranças</h3>
-            <p>
-              Tem certeza que deseja excluir todas as cobranças deste cliente?
-              <br />
-              <strong>{deletingGroup.cliente_nome}</strong>
-              {' '}— {deletingGroup.cobrancas.length} {deletingGroup.cobrancas.length === 1 ? 'cobrança' : 'cobranças'}
-            </p>
-            <div className="modal-actions">
-              <button
-                className="btn btn-ghost"
-                onClick={() => setDeletingGroup(null)}
-                disabled={savingDelete}
-              >
-                Cancelar
-              </button>
-              <button
-                className="btn btn-danger-solid"
-                onClick={handleConfirmDeleteGroup}
-                disabled={savingDelete}
-              >
-                {savingDelete ? 'Excluindo…' : 'Excluir'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+
 
       {editingGroup && (
         <div className="modal-backdrop" onClick={() => !savingEdit && setEditingGroup(null)}>
@@ -777,7 +790,7 @@ export default function Cobrancas() {
             <h3>Pagamento registrado!</h3>
             <p>
               Cobrança de <strong>{receiptModal.cliente_nome}</strong> no valor de{' '}
-              <strong>{formatBRL(receiptModal.valor)}</strong> marcada como paga.
+              <strong>{fmtBRL(receiptModal.valor)}</strong> marcada como paga.
               <br />
               Deseja baixar o comprovante{receiptModal.numero_comprovante ? ` ${receiptModal.numero_comprovante}` : ''}?
             </p>

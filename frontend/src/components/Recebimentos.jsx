@@ -10,6 +10,8 @@ import {
   todayISO
 } from '../utils.js';
 import EditableCell from './EditableCell.jsx';
+import { useConfirm } from '../ConfirmContext.jsx';
+import { useFormatBRL } from '../PrivacyContext.jsx';
 
 const STATUS_OPTIONS = ['Pago', 'Pendente', 'Atrasado'];
 
@@ -20,6 +22,8 @@ function StatusBadge({ value }) {
 
 export default function Recebimentos({ mesFiltro }) {
   const { settings } = useSettings();
+  const confirm = useConfirm();
+  const fmtBRL = useFormatBRL();
   const [rows, setRows] = useState([]);
   const [clientes, setClientes] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -91,7 +95,16 @@ export default function Recebimentos({ mesFiltro }) {
   }
 
   async function handleDelete(id) {
-    if (!confirm('Excluir este lançamento?')) return;
+    const rec = rows.find((r) => r.id === id);
+    const ok = await confirm({
+      message: (
+        <>
+          Tem certeza que deseja excluir este recebimento?
+          {rec?.cliente && <><br /><strong>{rec.cliente}</strong>{rec.servico ? ` — ${rec.servico}` : ''}</>}
+        </>
+      )
+    });
+    if (!ok) return;
     await api.deleteRecebimento(id);
     setRows((rs) => rs.filter((r) => r.id !== id));
   }
@@ -126,19 +139,19 @@ export default function Recebimentos({ mesFiltro }) {
       <div className="cards">
         <div className="card">
           <div className="card-label">Recebido</div>
-          <div className="card-value pos">{formatBRL(totais.pago)}</div>
+          <div className="card-value pos">{fmtBRL(totais.pago)}</div>
         </div>
         <div className="card">
           <div className="card-label">A receber</div>
-          <div className="card-value">{formatBRL(totais.pendente)}</div>
+          <div className="card-value">{fmtBRL(totais.pendente)}</div>
         </div>
         <div className="card">
           <div className="card-label">Atrasado</div>
-          <div className="card-value neg">{formatBRL(totais.atrasado)}</div>
+          <div className="card-value neg">{fmtBRL(totais.atrasado)}</div>
         </div>
         <div className="card">
           <div className="card-label">Total</div>
-          <div className="card-value">{formatBRL(totais.total)}</div>
+          <div className="card-value">{fmtBRL(totais.total)}</div>
         </div>
       </div>
 
@@ -161,7 +174,7 @@ export default function Recebimentos({ mesFiltro }) {
               <option value="">— Selecionar cliente —</option>
               {clientes.map((c) => (
                 <option key={c.id} value={c.id}>
-                  {c.nome}{c.valor_padrao ? ` · ${formatBRL(c.valor_padrao)}` : ''}
+                  {c.nome}{c.valor_padrao ? ` · ${fmtBRL(c.valor_padrao)}` : ''}
                 </option>
               ))}
             </select>

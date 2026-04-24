@@ -1,7 +1,17 @@
 import { useEffect, useRef, useState } from 'react';
-import { formatBRL, formatDate } from '../utils.js';
+import { formatDate } from '../utils.js';
+import { useFormatBRL } from '../PrivacyContext.jsx';
 
-export default function EditableCell({ value, type = 'text', options, onSave, align = 'left', placeholder = '' }) {
+export default function EditableCell({
+  value,
+  type = 'text',
+  options,
+  onSave,
+  align = 'left',
+  placeholder = '',
+  displayFormat
+}) {
+  const fmtBRL = useFormatBRL();
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(value ?? '');
   const inputRef = useRef(null);
@@ -85,8 +95,11 @@ export default function EditableCell({ value, type = 'text', options, onSave, al
   if (value == null || value === '') {
     display = placeholder || '—';
     extraClass = 'empty';
+  } else if (displayFormat) {
+    // Caller controla formatação (usado pra mascarar CNPJ/WhatsApp via privacy)
+    display = displayFormat(value);
   } else if (type === 'number') {
-    display = <span className="mono">{formatBRL(value)}</span>;
+    display = <span className="mono">{fmtBRL(value)}</span>;
   } else if (type === 'int') {
     display = <span className="mono">{value}</span>;
   } else if (type === 'date') {

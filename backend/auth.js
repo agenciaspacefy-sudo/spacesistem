@@ -7,11 +7,18 @@ import db from './db.js';
 
 const {
   JWT_SECRET = 'change-me-in-env',
-  GOOGLE_CLIENT_ID,
-  GOOGLE_CLIENT_SECRET,
   FRONTEND_URL = 'http://localhost:5173',
   BACKEND_URL = 'http://localhost:3001'
 } = process.env;
+
+// Lê as credenciais Google do ambiente a cada chamada, com trim() — assim
+// valores colados com espaço/quebra-de-linha no Railway não quebram silenciosamente,
+// e podemos atualizar as vars sem restart caso o dotenv seja recarregado.
+function readGoogleCreds() {
+  const clientId = (process.env.GOOGLE_CLIENT_ID || '').trim();
+  const clientSecret = (process.env.GOOGLE_CLIENT_SECRET || '').trim();
+  return { clientId, clientSecret };
+}
 
 const TOKEN_TTL = '7d';
 const COOKIE_NAME = 'spacefy_token';
@@ -80,16 +87,21 @@ function publicUser(u) {
 
 // ---------- Passport (Google OAuth) ----------
 export function setupPassport() {
-  if (!GOOGLE_CLIENT_ID || !GOOGLE_CLIENT_SECRET) {
-    console.warn('[auth] GOOGLE_CLIENT_ID/SECRET não configurados — login com Google desabilitado');
+  const { clientId, clientSecret } = readGoogleCreds();
+  if (!clientId || !clientSecret) {
+    console.warn(
+      '[auth] Google OAuth desabilitado — faltando:',
+      [!clientId && 'GOOGLE_CLIENT_ID', !clientSecret && 'GOOGLE_CLIENT_SECRET'].filter(Boolean).join(', ')
+    );
     return;
   }
+  console.log('[auth] Google OAuth habilitado — callback:', `${BACKEND_URL}/auth/google/callback`);
 
   passport.use(
     new GoogleStrategy(
       {
-        clientID: GOOGLE_CLIENT_ID,
-        clientSecret: GOOGLE_CLIENT_SECRET,
+        clientID: clientId,
+        clientSecret: clientSecret,
         callbackURL: `${BACKEND_URL}/auth/google/callback`
       },
       (_accessToken, _refreshToken, profile, done) => {
@@ -119,7 +131,10 @@ export function setupPassport() {
   });
 }
 
-export const googleEnabled = () => Boolean(GOOGLE_CLIENT_ID && GOOGLE_CLIENT_SECRET);
+export const googleEnabled = () => {
+  const { clientId, clientSecret } = readGoogleCreds();
+  return Boolean(clientId && clientSecret);
+};
 
 // ---------- Routes ----------
 const router = Router();
@@ -171,7 +186,17 @@ router.get('/me', (req, res) => {
 });
 
 router.get('/config', (req, res) => {
-  res.json({ googleEnabled: googleEnabled() });
+  const { clientId, clientSecret } = readGoogleCreds();
+  // Diagnóstico: expomos só a EXISTÊNCIA das vars (booleans), nunca os valores.
+  // Assim, abrindo /auth/config direto no navegador em produção, dá pra ver
+  // qual variável está faltando sem vazar segredo.
+  res.json({
+    googleEnabled: Boolean(clientId && clientSecret),
+    googleClientIdSet: Boolean(clientId),
+    googleClientSecretSet: Boolean(clientSecret),
+    backendUrl: BACKEND_URL,
+    expectedCallback: `${BACKEND_URL}/auth/google/callback`
+  });
 });
 
 // Google OAuth

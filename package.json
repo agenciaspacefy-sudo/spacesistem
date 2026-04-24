@@ -2,7 +2,7 @@
   "name": "spacefy-finance",
   "version": "1.0.0",
   "private": true,
-  "description": "SpaceSistem — gestão financeira Spacefy (backend + frontend single-service)",
+  "description": "SpaceSystem — gestão financeira Spacefy (backend + frontend single-service)",
   "engines": {
     "node": ">=22.5.0"
   },

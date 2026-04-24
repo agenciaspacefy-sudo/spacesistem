@@ -93,6 +93,64 @@ db.exec(`
     ordem INTEGER DEFAULT 0,
     created_at TEXT DEFAULT (datetime('now'))
   );
+
+  CREATE TABLE IF NOT EXISTS agenda_eventos (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    titulo TEXT NOT NULL,
+    descricao TEXT,
+    inicio TEXT NOT NULL,
+    fim TEXT NOT NULL,
+    cor TEXT DEFAULT '#D97757',
+    cliente_id INTEGER,
+    repeticao TEXT DEFAULT 'nao',
+    created_at TEXT DEFAULT (datetime('now'))
+  );
+
+  CREATE TABLE IF NOT EXISTS campanhas (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    cliente_id INTEGER,
+    nome TEXT NOT NULL,
+    plataforma TEXT NOT NULL DEFAULT 'Meta Ads',
+    objetivo TEXT NOT NULL DEFAULT 'Conversão',
+    orcamento_mensal REAL NOT NULL DEFAULT 0,
+    investimento_mes REAL NOT NULL DEFAULT 0,
+    resultado_mes REAL NOT NULL DEFAULT 0,
+    status TEXT NOT NULL DEFAULT 'Ativa',
+    data_inicio TEXT,
+    created_at TEXT DEFAULT (datetime('now'))
+  );
+
+  CREATE TABLE IF NOT EXISTS campanha_reunioes (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    campanha_id INTEGER NOT NULL,
+    data TEXT NOT NULL,
+    pauta TEXT,
+    decisoes TEXT,
+    ajustes_orcamento TEXT,
+    proximos_passos TEXT,
+    created_at TEXT DEFAULT (datetime('now')),
+    FOREIGN KEY (campanha_id) REFERENCES campanhas(id) ON DELETE CASCADE
+  );
+
+  CREATE TABLE IF NOT EXISTS notas (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    titulo TEXT NOT NULL DEFAULT '',
+    corpo TEXT NOT NULL DEFAULT '',
+    created_at TEXT DEFAULT (datetime('now')),
+    updated_at TEXT DEFAULT (datetime('now'))
+  );
+
+  CREATE TABLE IF NOT EXISTS cliente_relatorio_snapshots (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    cliente_id INTEGER NOT NULL,
+    ano_mes TEXT NOT NULL,
+    investimento REAL NOT NULL DEFAULT 0,
+    resultado REAL NOT NULL DEFAULT 0,
+    roas REAL NOT NULL DEFAULT 0,
+    updated_at TEXT DEFAULT (datetime('now')),
+    UNIQUE(cliente_id, ano_mes),
+    FOREIGN KEY (cliente_id) REFERENCES clientes(id) ON DELETE CASCADE
+  );
 `);
 
 // Idempotent migrations for DBs created by older schema versions
@@ -101,6 +159,8 @@ try { db.exec('ALTER TABLE clientes ADD COLUMN cnpj TEXT'); } catch {}
 try { db.exec('ALTER TABLE cobrancas ADD COLUMN numero_comprovante TEXT'); } catch {}
 try { db.exec('ALTER TABLE cobrancas ADD COLUMN tipo TEXT'); } catch {}
 try { db.exec("UPDATE cobrancas SET tipo = 'Pagamento Único' WHERE tipo IS NULL"); } catch {}
+try { db.exec('ALTER TABLE cobrancas ADD COLUMN enviado_em TEXT'); } catch {}
+try { db.exec('ALTER TABLE clientes ADD COLUMN relatorio_token TEXT'); } catch {}
 
 db.exec(`
   CREATE INDEX IF NOT EXISTS idx_rec_mes ON recebimentos(mes_ref);
@@ -112,6 +172,15 @@ db.exec(`
   CREATE INDEX IF NOT EXISTS idx_tar_cliente ON tarefas(cliente_id);
   CREATE INDEX IF NOT EXISTS idx_usu_email ON usuarios(email);
   CREATE INDEX IF NOT EXISTS idx_usu_google ON usuarios(google_id);
+  CREATE INDEX IF NOT EXISTS idx_age_inicio ON agenda_eventos(inicio);
+  CREATE INDEX IF NOT EXISTS idx_age_cliente ON agenda_eventos(cliente_id);
+  CREATE INDEX IF NOT EXISTS idx_camp_cliente ON campanhas(cliente_id);
+  CREATE INDEX IF NOT EXISTS idx_camp_status ON campanhas(status);
+  CREATE INDEX IF NOT EXISTS idx_reu_camp ON campanha_reunioes(campanha_id);
+  CREATE INDEX IF NOT EXISTS idx_cli_token ON clientes(relatorio_token);
+  CREATE INDEX IF NOT EXISTS idx_snap_cliente ON cliente_relatorio_snapshots(cliente_id);
+  CREATE INDEX IF NOT EXISTS idx_snap_mes ON cliente_relatorio_snapshots(ano_mes);
+  CREATE INDEX IF NOT EXISTS idx_notas_updated ON notas(updated_at);
 `);
 
 const DEFAULT_TEMPLATE = `Olá {nome_cliente}! 👋

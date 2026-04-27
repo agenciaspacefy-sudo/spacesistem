@@ -172,6 +172,7 @@ try { db.exec("UPDATE cobrancas SET tipo = 'Pagamento Único' WHERE tipo IS NULL
 try { db.exec('ALTER TABLE cobrancas ADD COLUMN enviado_em TEXT'); } catch {}
 try { db.exec('ALTER TABLE clientes ADD COLUMN relatorio_token TEXT'); } catch {}
 try { db.exec('ALTER TABLE clientes ADD COLUMN observacoes TEXT'); } catch {}
+try { db.exec('ALTER TABLE notas ADD COLUMN concluido_em TEXT'); } catch {}
 
 db.exec(`
   CREATE INDEX IF NOT EXISTS idx_rec_mes ON recebimentos(mes_ref);

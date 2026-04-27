@@ -71,7 +71,7 @@ export default function Resumo({ mesFiltro }) {
           <div className="card-value pos">{fmtBRL(totais.receita)}</div>
         </div>
         <div className="card">
-          <div className="card-label">Total gastos</div>
+          <div className="card-label">Total pagamentos</div>
           <div className="card-value neg">{fmtBRL(totais.gastos)}</div>
         </div>
         <div className="card">
@@ -117,7 +117,7 @@ export default function Resumo({ mesFiltro }) {
             <tr>
               <th>Mês</th>
               <th className="right">Receita recebida</th>
-              <th className="right">Total gastos</th>
+              <th className="right">Total pagamentos</th>
               <th className="right">Lucro líquido</th>
               <th className="right">Margem</th>
             </tr>

@@ -12,6 +12,7 @@ import {
 import EditableCell from './EditableCell.jsx';
 import { useConfirm } from '../ConfirmContext.jsx';
 import { useFormatBRL } from '../PrivacyContext.jsx';
+import RecebimentosChart from './RecebimentosChart.jsx';
 
 const STATUS_OPTIONS = ['Pago', 'Pendente', 'Atrasado'];
 
@@ -154,6 +155,8 @@ export default function Recebimentos({ mesFiltro }) {
           <div className="card-value">{fmtBRL(totais.total)}</div>
         </div>
       </div>
+
+      <RecebimentosChart defaultPeriodo="mes" titulo="Recebimentos no período" />
 
       <div className="toolbar" style={{ padding: 0, marginBottom: 12 }}>
         <div className="toolbar-left">

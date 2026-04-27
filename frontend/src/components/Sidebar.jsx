@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { LogoMark } from './Logo.jsx';
 import { useAuth } from '../AuthContext.jsx';
+import ProfileModal from './ProfileModal.jsx';
 
 // --------------- Ícones (stroke, 20px) ---------------
 function Icon({ children }) {
@@ -151,7 +152,7 @@ function IconMenu() {
 const NAV_ITEMS = [
   { id: 'dashboard',   label: 'Dashboard',     Icon: IconDashboard },
   { id: 'recebimentos',label: 'Recebimentos',  Icon: IconRecebimentos },
-  { id: 'gastos',      label: 'Gastos',        Icon: IconGastos },
+  { id: 'gastos',      label: 'Pagamentos',    Icon: IconGastos },
   { id: 'clientes',    label: 'Clientes',      Icon: IconClientes },
   { id: 'cobrancas',   label: 'Cobranças',     Icon: IconCobrancas },
   { id: 'campanhas',   label: 'Campanhas',     Icon: IconCampanhas },
@@ -165,6 +166,7 @@ const NAV_ITEMS = [
 export default function Sidebar({ tab, onTab, theme, onToggleTheme, mobileOpen, onCloseMobile }) {
   const { user, logout } = useAuth();
   const [expanded, setExpanded] = useState(false);
+  const [profileOpen, setProfileOpen] = useState(false);
 
   // Fecha o menu mobile ao trocar de aba
   useEffect(() => {
@@ -246,10 +248,13 @@ export default function Sidebar({ tab, onTab, theme, onToggleTheme, mobileOpen, 
           </button>
 
           {user && (
-            <div
-              className="sidebar-user"
-              title={expanded ? undefined : (user.nome || user.email)}
+            <button
+              type="button"
+              className="sidebar-user sidebar-user-clickable"
+              onClick={() => setProfileOpen(true)}
+              title={expanded ? 'Editar perfil' : (user.nome || user.email)}
               data-tooltip={user.nome || user.email}
+              aria-label="Editar perfil"
             >
               <span className="sidebar-user-avatar">
                 {user.avatar
@@ -259,7 +264,7 @@ export default function Sidebar({ tab, onTab, theme, onToggleTheme, mobileOpen, 
               <span className="sidebar-user-name" title={user.email}>
                 {user.nome || user.email}
               </span>
-            </div>
+            </button>
           )}
 
           <button
@@ -274,6 +279,8 @@ export default function Sidebar({ tab, onTab, theme, onToggleTheme, mobileOpen, 
           </button>
         </div>
       </aside>
+
+      {profileOpen && <ProfileModal onClose={() => setProfileOpen(false)} />}
     </>
   );
 }

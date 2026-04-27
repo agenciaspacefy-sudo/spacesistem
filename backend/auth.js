@@ -185,6 +185,40 @@ router.get('/me', (req, res) => {
   }
 });
 
+// Atualiza nome e/ou avatar do usuário autenticado
+router.put('/me', (req, res) => {
+  const token = req.cookies?.[COOKIE_NAME];
+  if (!token) return res.status(401).json({ error: 'Não autenticado' });
+  try {
+    const payload = jwt.verify(token, JWT_SECRET);
+    const { nome, avatar } = req.body || {};
+    const fields = [];
+    const values = [];
+    if (typeof nome === 'string' && nome.trim()) {
+      fields.push('nome = ?');
+      values.push(nome.trim());
+    }
+    if (typeof avatar === 'string' || avatar === null) {
+      // Limita avatar a ~400KB de base64 (200x200 JPEG cabe folgado)
+      if (typeof avatar === 'string' && avatar.length > 600 * 1024) {
+        return res.status(413).json({ error: 'Avatar muito grande (máx 400KB).' });
+      }
+      fields.push('avatar = ?');
+      values.push(avatar);
+    }
+    if (!fields.length) return res.status(400).json({ error: 'Nada para atualizar' });
+    values.push(payload.id);
+    db.prepare(`UPDATE usuarios SET ${fields.join(', ')} WHERE id = ?`).run(...values);
+    const user = findUserById(payload.id);
+    // Re-emite o token com o novo nome (se mudou) para manter o JWT atualizado
+    const newToken = signToken(user);
+    setAuthCookie(res, newToken);
+    res.json({ user: publicUser(user) });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 router.get('/config', (req, res) => {
   const { clientId, clientSecret } = readGoogleCreds();
   // Diagnóstico: expomos só a EXISTÊNCIA das vars (booleans), nunca os valores.

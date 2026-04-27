@@ -52,8 +52,14 @@ export function AuthProvider({ children }) {
     setUser(null);
   }
 
+  async function updateProfile(data) {
+    const { user: updated } = await auth.updateProfile(data);
+    setUser(updated);
+    return updated;
+  }
+
   return (
-    <AuthCtx.Provider value={{ user, loaded, googleEnabled, login, register, logout, reload }}>
+    <AuthCtx.Provider value={{ user, loaded, googleEnabled, login, register, logout, reload, updateProfile }}>
       {children}
     </AuthCtx.Provider>
   );

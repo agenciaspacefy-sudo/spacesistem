@@ -28,7 +28,7 @@ const TABS_WITH_MES = new Set(['recebimentos', 'gastos', 'resumo']);
 const PAGE_TITLES = {
   dashboard: 'Dashboard',
   recebimentos: 'Recebimentos',
-  gastos: 'Gastos',
+  gastos: 'Pagamentos',
   clientes: 'Clientes',
   cobrancas: 'Cobranças',
   campanhas: 'Campanhas',

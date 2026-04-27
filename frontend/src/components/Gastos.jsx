@@ -6,13 +6,12 @@ import { useConfirm } from '../ConfirmContext.jsx';
 import { useFormatBRL } from '../PrivacyContext.jsx';
 
 const CATEGORIAS = [
-  'Ferramentas',
+  'Funcionários',
+  'Fornecedores',
+  'Compras para Empresa',
+  'Ferramentas e Software',
+  'Impostos e Taxas',
   'Marketing',
-  'Equipe',
-  'Freelancer',
-  'Infraestrutura',
-  'Impostos',
-  'Escritório',
   'Outros'
 ];
 
@@ -29,7 +28,7 @@ export default function Gastos({ mesFiltro }) {
   function emptyForm() {
     return {
       data: todayISO(),
-      categoria: 'Ferramentas',
+      categoria: 'Funcionários',
       descricao: '',
       mes_ref: mesFiltro || currentMonth(),
       valor: '',
@@ -73,7 +72,7 @@ export default function Gastos({ mesFiltro }) {
     const ok = await confirm({
       message: (
         <>
-          Tem certeza que deseja excluir este gasto?
+          Tem certeza que deseja excluir este pagamento?
           {g && (
             <><br /><strong>{g.categoria}</strong>{g.descricao ? ` — ${g.descricao}` : ''}{g.valor ? ` · ${fmtBRL(g.valor)}` : ''}</>
           )}
@@ -96,7 +95,7 @@ export default function Gastos({ mesFiltro }) {
     <div>
       <div className="cards">
         <div className="card">
-          <div className="card-label">Total gastos</div>
+          <div className="card-label">Total pagamentos</div>
           <div className="card-value neg">{fmtBRL(total)}</div>
         </div>
         {porCategoria.map(([cat, val]) => (
@@ -113,7 +112,7 @@ export default function Gastos({ mesFiltro }) {
         </div>
         <div className="toolbar-right">
           <button className="btn btn-primary" onClick={() => setShowForm((s) => !s)}>
-            {showForm ? 'Cancelar' : '+ Novo gasto'}
+            {showForm ? 'Cancelar' : '+ Novo pagamento'}
           </button>
         </div>
       </div>
@@ -197,7 +196,7 @@ export default function Gastos({ mesFiltro }) {
             {!loading && rows.length === 0 && (
               <tr>
                 <td colSpan={7}>
-                  <div className="empty-state">Nenhum gasto para este filtro.</div>
+                  <div className="empty-state">Nenhum pagamento para este filtro.</div>
                 </td>
               </tr>
             )}

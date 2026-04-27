@@ -666,17 +666,41 @@ app.put('/api/settings', (req, res) => {
 
 // ---------- NOTAS (bloco de notas) ----------
 app.get('/api/notas', (req, res) => {
-  const { q } = req.query;
-  let rows;
+  const { q, incluir_concluidas } = req.query;
+  // Por padrão filtra concluídas; ?incluir_concluidas=1 traz todas;
+  // ?incluir_concluidas=apenas traz só as concluídas
+  let where = '';
+  const params = [];
+  if (incluir_concluidas === 'apenas') {
+    where = 'WHERE concluido_em IS NOT NULL';
+  } else if (incluir_concluidas !== '1') {
+    where = 'WHERE concluido_em IS NULL';
+  }
   if (q) {
     const like = `%${q}%`;
-    rows = db
-      .prepare(`SELECT * FROM notas WHERE titulo LIKE ? OR corpo LIKE ? ORDER BY updated_at DESC, id DESC`)
-      .all(like, like);
-  } else {
-    rows = db.prepare(`SELECT * FROM notas ORDER BY updated_at DESC, id DESC`).all();
+    where += where ? ' AND ' : 'WHERE ';
+    where += '(titulo LIKE ? OR corpo LIKE ?)';
+    params.push(like, like);
   }
+  const rows = db
+    .prepare(`SELECT * FROM notas ${where} ORDER BY updated_at DESC, id DESC`)
+    .all(...params);
   res.json(rows);
+});
+
+// Marca/desmarca nota como concluída (sem deletar do banco)
+app.post('/api/notas/:id/concluir', (req, res) => {
+  try {
+    const desfazer = req.body?.desfazer === true;
+    if (desfazer) {
+      db.prepare('UPDATE notas SET concluido_em = NULL WHERE id = ?').run(req.params.id);
+    } else {
+      db.prepare("UPDATE notas SET concluido_em = datetime('now') WHERE id = ?").run(req.params.id);
+    }
+    const row = db.prepare('SELECT * FROM notas WHERE id = ?').get(req.params.id);
+    if (!row) return res.status(404).json({ error: 'Not found' });
+    res.json(row);
+  } catch (e) { res.status(400).json({ error: e.message }); }
 });
 
 app.post('/api/notas', (req, res) => {

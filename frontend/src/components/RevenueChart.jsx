@@ -28,17 +28,17 @@ export default function RevenueChart({ resumo }) {
     return {
       mes: monthLabel(m),
       Receita: r?.receita || 0,
-      Gastos: r?.gastos || 0
+      Pagamentos: r?.gastos || 0
     };
   });
 
-  const total = data.reduce((s, d) => s + d.Receita + d.Gastos, 0);
+  const total = data.reduce((s, d) => s + d.Receita + d.Pagamentos, 0);
 
   return (
     <div className="chart-card">
       <div className="chart-header">
         <div>
-          <div className="chart-title">Receita recebida × Gastos</div>
+          <div className="chart-title">Receita recebida × Pagamentos</div>
           <div style={{ color: 'var(--text-dim)', fontSize: 12.5 }}>Últimos 12 meses</div>
         </div>
       </div>
@@ -73,7 +73,7 @@ export default function RevenueChart({ resumo }) {
             <Tooltip content={<CustomTooltip />} cursor={{ fill: 'var(--row-hover)' }} />
             <Legend wrapperStyle={{ paddingTop: 8, fontSize: 12 }} iconType="circle" />
             <Bar dataKey="Receita" fill="url(#g-receita)" radius={[6, 6, 0, 0]} maxBarSize={40} />
-            <Bar dataKey="Gastos" fill="url(#g-gastos)" radius={[6, 6, 0, 0]} maxBarSize={40} />
+            <Bar dataKey="Pagamentos" fill="url(#g-gastos)" radius={[6, 6, 0, 0]} maxBarSize={40} />
           </BarChart>
         </ResponsiveContainer>
       )}

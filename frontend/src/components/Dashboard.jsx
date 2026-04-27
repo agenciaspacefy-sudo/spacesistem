@@ -17,6 +17,7 @@ import {
   todayISO
 } from '../utils.js';
 import { useFormatBRL, usePrivacy } from '../PrivacyContext.jsx';
+import RecebimentosChart from './RecebimentosChart.jsx';
 
 function endOfWeekISO(baseIso) {
   const [y, m, d] = baseIso.split('-').map(Number);
@@ -163,10 +164,12 @@ export default function Dashboard({ onNavigate }) {
         <DashCard label="Clientes ativos" value={clientesAtivos} />
       </div>
 
+      <RecebimentosChart defaultPeriodo="mes" titulo="Recebimentos no período" />
+
       <div className="chart-card">
         <div className="chart-header">
           <div>
-            <div className="chart-title">Receita recebida</div>
+            <div className="chart-title">Receita recebida (histórico)</div>
             <div style={{ color: 'var(--text-dim)', fontSize: 12.5 }}>Últimos 6 meses</div>
           </div>
         </div>

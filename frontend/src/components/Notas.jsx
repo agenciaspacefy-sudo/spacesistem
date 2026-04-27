@@ -31,15 +31,18 @@ export default function Notas() {
   const [busca, setBusca] = useState('');
   const [editando, setEditando] = useState(null); // { id?, titulo, corpo }
   const [salvando, setSalvando] = useState(false);
+  const [verConcluidas, setVerConcluidas] = useState(false);
   const saveTimeoutRef = useRef(null);
 
   async function load(q = '') {
     setLoading(true);
-    try { setNotas(await api.listNotas(q || undefined)); }
-    finally { setLoading(false); }
+    try {
+      const incluir = verConcluidas ? 'apenas' : undefined;
+      setNotas(await api.listNotas(q || undefined, incluir));
+    } finally { setLoading(false); }
   }
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => { load(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [verConcluidas]);
 
   // Filtro client-side também, pra ser instantâneo enquanto digita
   const filtradas = useMemo(() => {
@@ -117,6 +120,32 @@ export default function Notas() {
     if (editando?.id === nota.id) setEditando(null);
   }
 
+  async function concluir(nota) {
+    const ok = await confirm({
+      title: 'Concluir nota',
+      message: (
+        <>
+          Marcar nota como concluída? Ela será removida da listagem.
+          {nota.titulo && <><br /><strong>{nota.titulo}</strong></>}
+          <br />
+          <span style={{ fontSize: 12 }}>A nota continua salva e pode ser recuperada em "Ver concluídas".</span>
+        </>
+      ),
+      confirmLabel: 'Confirmar',
+      cancelLabel: 'Cancelar',
+      variant: 'default',
+      busyLabel: 'Concluindo…'
+    });
+    if (!ok) return;
+    await api.concluirNota(nota.id);
+    setNotas((ns) => ns.filter((n) => n.id !== nota.id));
+  }
+
+  async function reabrir(nota) {
+    await api.concluirNota(nota.id, true);
+    setNotas((ns) => ns.filter((n) => n.id !== nota.id));
+  }
+
   return (
     <div>
       <div className="cards">
@@ -137,21 +166,47 @@ export default function Notas() {
           />
         </div>
         <div className="toolbar-right">
-          <button className="btn btn-primary" onClick={abrirNova}>+ Nova nota</button>
+          <button
+            type="button"
+            className={`btn btn-sm ${verConcluidas ? 'btn-primary' : 'btn-ghost'}`}
+            onClick={() => setVerConcluidas((v) => !v)}
+            title={verConcluidas ? 'Voltar para notas ativas' : 'Mostrar notas concluídas'}
+          >
+            {verConcluidas ? '← Voltar para ativas' : 'Ver concluídas'}
+          </button>
+          {!verConcluidas && (
+            <button className="btn btn-primary" onClick={abrirNova}>+ Nova nota</button>
+          )}
         </div>
       </div>
 
       {loading && <div className="empty-state">Carregando…</div>}
       {!loading && filtradas.length === 0 && (
         <div className="empty-state">
-          {busca ? 'Nenhuma nota encontrada para essa busca.' : 'Nenhuma nota ainda. Crie a primeira!'}
+          {busca
+            ? 'Nenhuma nota encontrada para essa busca.'
+            : verConcluidas
+              ? 'Nenhuma nota concluída ainda.'
+              : 'Nenhuma nota ainda. Crie a primeira!'}
         </div>
       )}
 
       {!loading && filtradas.length > 0 && (
         <div className="notas-grid">
           {filtradas.map((n) => (
-            <button key={n.id} className="nota-card" onClick={() => abrirEditar(n)}>
+            <div
+              key={n.id}
+              className="nota-card"
+              role="button"
+              tabIndex={0}
+              onClick={() => abrirEditar(n)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault();
+                  abrirEditar(n);
+                }
+              }}
+            >
               <div className="nota-card-head">
                 <h3 className="nota-card-titulo">{n.titulo || 'Sem título'}</h3>
                 <span
@@ -170,8 +225,33 @@ export default function Notas() {
                 >×</span>
               </div>
               <p className="nota-card-previa">{previa(n.corpo)}</p>
-              <div className="nota-card-data">{formatData(n.updated_at || n.created_at)}</div>
-            </button>
+              <div className="nota-card-foot">
+                <div className="nota-card-data">
+                  {n.concluido_em
+                    ? `Concluída · ${formatData(n.concluido_em)}`
+                    : formatData(n.updated_at || n.created_at)}
+                </div>
+                {verConcluidas ? (
+                  <button
+                    type="button"
+                    className="btn btn-sm btn-ghost nota-card-action"
+                    onClick={(e) => { e.stopPropagation(); reabrir(n); }}
+                    title="Reabrir nota"
+                  >
+                    Reabrir
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    className="btn btn-sm btn-primary nota-card-action"
+                    onClick={(e) => { e.stopPropagation(); concluir(n); }}
+                    title="Marcar como concluída"
+                  >
+                    ✓ Concluído
+                  </button>
+                )}
+              </div>
+            </div>
           ))}
         </div>
       )}

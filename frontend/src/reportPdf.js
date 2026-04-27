@@ -96,7 +96,7 @@ export function generateMonthlyReport({ resumoRows, recebimentos, gastos, mesFil
 
   autoTable(doc, {
     startY: y + 2,
-    head: [['Mês', 'Receita', 'Gastos', 'Lucro', 'Margem']],
+    head: [['Mês', 'Receita', 'Pagamentos', 'Lucro', 'Margem']],
     body: [
       ...resumoOrdenado.map((r) => [
         monthLabel(r.mes),
@@ -164,7 +164,7 @@ export function generateMonthlyReport({ resumoRows, recebimentos, gastos, mesFil
     setColor(doc, 'setTextColor', COLORS.text);
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(12);
-    doc.text(`Gastos detalhados — ${monthLabel(mesFiltro)}`, MARGIN, y);
+    doc.text(`Pagamentos detalhados — ${monthLabel(mesFiltro)}`, MARGIN, y);
 
     autoTable(doc, {
       startY: y + 4,

@@ -44,7 +44,8 @@ export const auth = {
   config: () => request('/auth/config'),
   login: (email, senha) => request('/auth/login', { method: 'POST', body: JSON.stringify({ email, senha }) }),
   register: (data) => request('/auth/register', { method: 'POST', body: JSON.stringify(data) }),
-  logout: () => request('/auth/logout', { method: 'POST' })
+  logout: () => request('/auth/logout', { method: 'POST' }),
+  updateProfile: (data) => request('/auth/me', { method: 'PUT', body: JSON.stringify(data) })
 };
 
 export const api = {
@@ -116,10 +117,18 @@ export const api = {
   campanhasResumo: () => request(`${API}/campanhas/resumo`),
 
   // Notas
-  listNotas: (q) => request(`${API}/notas${q ? `?q=${encodeURIComponent(q)}` : ''}`),
+  listNotas: (q, incluir) => {
+    const params = new URLSearchParams();
+    if (q) params.set('q', q);
+    if (incluir) params.set('incluir_concluidas', incluir);
+    const qs = params.toString();
+    return request(`${API}/notas${qs ? '?' + qs : ''}`);
+  },
   createNota: (data) => request(`${API}/notas`, { method: 'POST', body: JSON.stringify(data) }),
   updateNota: (id, data) => request(`${API}/notas/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
   deleteNota: (id) => request(`${API}/notas/${id}`, { method: 'DELETE' }),
+  concluirNota: (id, desfazer = false) =>
+    request(`${API}/notas/${id}/concluir`, { method: 'POST', body: JSON.stringify({ desfazer }) }),
 
   // Reuniões de campanha
   listReunioes: (campanhaId) => request(`${API}/campanhas/${campanhaId}/reunioes`),

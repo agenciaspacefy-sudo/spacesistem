@@ -4,6 +4,7 @@ import EditableCell from './EditableCell.jsx';
 import { useConfirm } from '../ConfirmContext.jsx';
 import { useFormatCnpj, useFormatWhatsapp } from '../PrivacyContext.jsx';
 import ClienteHistoricoDrawer from './ClienteHistoricoDrawer.jsx';
+import ClienteDetalheDrawer from './ClienteDetalheDrawer.jsx';
 
 export default function Clientes() {
   const confirm = useConfirm();
@@ -14,6 +15,7 @@ export default function Clientes() {
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState(emptyForm());
   const [drawerCliente, setDrawerCliente] = useState(null);
+  const [detalheCliente, setDetalheCliente] = useState(null);
   const [linkCliente, setLinkCliente] = useState(null);
 
   function emptyForm() {
@@ -137,10 +139,28 @@ export default function Clientes() {
                   <div className="cell cliente-nome-cell">
                     <button
                       className="cliente-nome-link"
-                      onClick={() => setDrawerCliente(r)}
-                      title="Ver histórico financeiro"
+                      onClick={() => setDetalheCliente(r)}
+                      title="Ver detalhes do cliente"
                     >
                       {r.nome}
+                    </button>
+                    {r.servicos_count > 0 && (
+                      <span className="cliente-servicos-badge" title={`${r.servicos_count} serviço${r.servicos_count === 1 ? '' : 's'} contratado${r.servicos_count === 1 ? '' : 's'}`}>
+                        {r.servicos_count} serviço{r.servicos_count === 1 ? '' : 's'}
+                      </span>
+                    )}
+                    <button
+                      className="cliente-historico-icon"
+                      onClick={() => setDrawerCliente(r)}
+                      title="Ver histórico financeiro"
+                      aria-label="Ver histórico financeiro"
+                    >
+                      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                        strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <line x1="18" y1="20" x2="18" y2="10" />
+                        <line x1="12" y1="20" x2="12" y2="4" />
+                        <line x1="6" y1="20" x2="6" y2="14" />
+                      </svg>
                     </button>
                   </div>
                 </td>
@@ -186,6 +206,20 @@ export default function Clientes() {
         <ClienteHistoricoDrawer
           cliente={drawerCliente}
           onClose={() => setDrawerCliente(null)}
+        />
+      )}
+
+      {detalheCliente && (
+        <ClienteDetalheDrawer
+          cliente={detalheCliente}
+          onClose={() => setDetalheCliente(null)}
+          onChangeServicosCount={(id, count) => {
+            setRows((rs) => rs.map((r) => (r.id === id ? { ...r, servicos_count: count } : r)));
+          }}
+          onChangeObservacoes={(id, obs) => {
+            setRows((rs) => rs.map((r) => (r.id === id ? { ...r, observacoes: obs } : r)));
+            setDetalheCliente((c) => (c && c.id === id ? { ...c, observacoes: obs } : c));
+          }}
         />
       )}
 

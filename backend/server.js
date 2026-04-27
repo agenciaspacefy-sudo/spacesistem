@@ -156,7 +156,7 @@ const PORT = process.env.PORT || 3001;
 
 const REC_FIELDS = ['data', 'cliente', 'servico', 'mes_ref', 'valor', 'vencimento', 'status', 'cliente_id'];
 const GAS_FIELDS = ['data', 'categoria', 'descricao', 'mes_ref', 'valor', 'forma_pagamento'];
-const CLI_FIELDS = ['nome', 'cnpj', 'whatsapp', 'ativo'];
+const CLI_FIELDS = ['nome', 'cnpj', 'whatsapp', 'ativo', 'observacoes'];
 const COB_FIELDS = ['cliente_id', 'valor', 'vencimento', 'descricao', 'status', 'data_pagamento', 'numero_comprovante', 'tipo', 'enviado_em'];
 const TAR_FIELDS = ['titulo', 'descricao', 'prioridade', 'data_limite', 'cliente_id', 'status', 'ordem'];
 const AGE_FIELDS = ['titulo', 'descricao', 'inicio', 'fim', 'cor', 'cliente_id', 'repeticao'];
@@ -254,7 +254,12 @@ app.delete('/api/gastos/:id', (req, res) => {
 
 // ---------- CLIENTES ----------
 app.get('/api/clientes', (req, res) => {
-  const rows = db.prepare('SELECT * FROM clientes ORDER BY nome').all();
+  const rows = db.prepare(`
+    SELECT c.*,
+      (SELECT COUNT(*) FROM cliente_servicos s WHERE s.cliente_id = c.id) AS servicos_count
+    FROM clientes c
+    ORDER BY c.nome
+  `).all();
   res.json(rows);
 });
 
@@ -296,6 +301,66 @@ app.delete('/api/clientes/:id/relatorio-token', (req, res) => {
     const cli = db.prepare('SELECT id FROM clientes WHERE id = ?').get(req.params.id);
     if (!cli) return res.status(404).json({ error: 'Cliente não encontrado' });
     db.prepare('UPDATE clientes SET relatorio_token = NULL WHERE id = ?').run(req.params.id);
+    res.json({ ok: true });
+  } catch (e) {
+    res.status(400).json({ error: e.message });
+  }
+});
+
+// ---------- SERVIÇOS CONTRATADOS DO CLIENTE ----------
+// Lista os serviços (códigos + custom) de um cliente
+app.get('/api/clientes/:id/servicos', (req, res) => {
+  try {
+    const cli = db.prepare('SELECT id FROM clientes WHERE id = ?').get(req.params.id);
+    if (!cli) return res.status(404).json({ error: 'Cliente não encontrado' });
+    const rows = db.prepare(
+      'SELECT servico, custom_text FROM cliente_servicos WHERE cliente_id = ?'
+    ).all(req.params.id);
+    res.json(rows);
+  } catch (e) {
+    res.status(400).json({ error: e.message });
+  }
+});
+
+// Toggle de um serviço individual (insere ou remove)
+// body: { servico: 'meta_ads', ativo: true, custom_text?: '...' }
+app.post('/api/clientes/:id/servicos/toggle', (req, res) => {
+  try {
+    const cli = db.prepare('SELECT id FROM clientes WHERE id = ?').get(req.params.id);
+    if (!cli) return res.status(404).json({ error: 'Cliente não encontrado' });
+    const { servico, ativo, custom_text } = req.body || {};
+    if (!servico || typeof servico !== 'string') {
+      return res.status(400).json({ error: 'servico obrigatório' });
+    }
+    if (ativo) {
+      db.prepare(`
+        INSERT INTO cliente_servicos (cliente_id, servico, custom_text)
+        VALUES (?, ?, ?)
+        ON CONFLICT(cliente_id, servico) DO UPDATE SET
+          custom_text = excluded.custom_text
+      `).run(req.params.id, servico, custom_text ?? null);
+    } else {
+      db.prepare(
+        'DELETE FROM cliente_servicos WHERE cliente_id = ? AND servico = ?'
+      ).run(req.params.id, servico);
+    }
+    const rows = db.prepare(
+      'SELECT servico, custom_text FROM cliente_servicos WHERE cliente_id = ?'
+    ).all(req.params.id);
+    res.json({ servicos: rows });
+  } catch (e) {
+    res.status(400).json({ error: e.message });
+  }
+});
+
+// Atualiza apenas o texto custom (Outros) — não altera flag ativa
+app.put('/api/clientes/:id/servicos/:servico', (req, res) => {
+  try {
+    const { id, servico } = req.params;
+    const { custom_text } = req.body || {};
+    db.prepare(
+      'UPDATE cliente_servicos SET custom_text = ? WHERE cliente_id = ? AND servico = ?'
+    ).run(custom_text ?? null, id, servico);
     res.json({ ok: true });
   } catch (e) {
     res.status(400).json({ error: e.message });

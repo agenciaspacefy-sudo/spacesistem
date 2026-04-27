@@ -67,6 +67,17 @@ export const api = {
   deleteCliente: (id) => request(`${API}/clientes/${id}`, { method: 'DELETE' }),
   gerarRelatorioToken: (id) => request(`${API}/clientes/${id}/relatorio-token`, { method: 'POST' }),
   revogarRelatorioToken: (id) => request(`${API}/clientes/${id}/relatorio-token`, { method: 'DELETE' }),
+  listClienteServicos: (id) => request(`${API}/clientes/${id}/servicos`),
+  toggleClienteServico: (id, servico, ativo, custom_text) =>
+    request(`${API}/clientes/${id}/servicos/toggle`, {
+      method: 'POST',
+      body: JSON.stringify({ servico, ativo, custom_text })
+    }),
+  updateClienteServicoCustom: (id, servico, custom_text) =>
+    request(`${API}/clientes/${id}/servicos/${encodeURIComponent(servico)}`, {
+      method: 'PUT',
+      body: JSON.stringify({ custom_text })
+    }),
 
   // Cobranças
   listCobrancas: () => request(`${API}/cobrancas`),

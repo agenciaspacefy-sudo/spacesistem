@@ -151,6 +151,16 @@ db.exec(`
     UNIQUE(cliente_id, ano_mes),
     FOREIGN KEY (cliente_id) REFERENCES clientes(id) ON DELETE CASCADE
   );
+
+  CREATE TABLE IF NOT EXISTS cliente_servicos (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    cliente_id INTEGER NOT NULL,
+    servico TEXT NOT NULL,
+    custom_text TEXT,
+    created_at TEXT DEFAULT (datetime('now')),
+    UNIQUE(cliente_id, servico),
+    FOREIGN KEY (cliente_id) REFERENCES clientes(id) ON DELETE CASCADE
+  );
 `);
 
 // Idempotent migrations for DBs created by older schema versions
@@ -161,6 +171,7 @@ try { db.exec('ALTER TABLE cobrancas ADD COLUMN tipo TEXT'); } catch {}
 try { db.exec("UPDATE cobrancas SET tipo = 'Pagamento Único' WHERE tipo IS NULL"); } catch {}
 try { db.exec('ALTER TABLE cobrancas ADD COLUMN enviado_em TEXT'); } catch {}
 try { db.exec('ALTER TABLE clientes ADD COLUMN relatorio_token TEXT'); } catch {}
+try { db.exec('ALTER TABLE clientes ADD COLUMN observacoes TEXT'); } catch {}
 
 db.exec(`
   CREATE INDEX IF NOT EXISTS idx_rec_mes ON recebimentos(mes_ref);
@@ -181,6 +192,7 @@ db.exec(`
   CREATE INDEX IF NOT EXISTS idx_snap_cliente ON cliente_relatorio_snapshots(cliente_id);
   CREATE INDEX IF NOT EXISTS idx_snap_mes ON cliente_relatorio_snapshots(ano_mes);
   CREATE INDEX IF NOT EXISTS idx_notas_updated ON notas(updated_at);
+  CREATE INDEX IF NOT EXISTS idx_cli_serv_cli ON cliente_servicos(cliente_id);
 `);
 
 const DEFAULT_TEMPLATE = `Olá {nome_cliente}! 👋

@@ -174,6 +174,31 @@ try { db.exec('ALTER TABLE clientes ADD COLUMN relatorio_token TEXT'); } catch {
 try { db.exec('ALTER TABLE clientes ADD COLUMN observacoes TEXT'); } catch {}
 try { db.exec('ALTER TABLE notas ADD COLUMN concluido_em TEXT'); } catch {}
 
+// ---------- Migrações de billing/trial ----------
+try { db.exec('ALTER TABLE usuarios ADD COLUMN trial_inicio TEXT'); } catch {}
+try { db.exec('ALTER TABLE usuarios ADD COLUMN trial_fim TEXT'); } catch {}
+try { db.exec("ALTER TABLE usuarios ADD COLUMN plano TEXT DEFAULT 'trial'"); } catch {}
+try { db.exec('ALTER TABLE usuarios ADD COLUMN stripe_customer_id TEXT'); } catch {}
+try { db.exec('ALTER TABLE usuarios ADD COLUMN stripe_subscription_id TEXT'); } catch {}
+try { db.exec('ALTER TABLE usuarios ADD COLUMN assinatura_ativa INTEGER DEFAULT 0'); } catch {}
+
+// Backfill: usuários existentes sem trial_inicio recebem trial baseado em criado_em
+// (se já passou 7 dias desde o cadastro, ficam expirados).
+try {
+  db.exec(`
+    UPDATE usuarios
+    SET
+      trial_inicio = COALESCE(trial_inicio, criado_em, datetime('now')),
+      trial_fim = COALESCE(
+        trial_fim,
+        datetime(COALESCE(criado_em, datetime('now')), '+7 days')
+      ),
+      plano = COALESCE(plano, 'trial'),
+      assinatura_ativa = COALESCE(assinatura_ativa, 0)
+    WHERE trial_inicio IS NULL OR trial_fim IS NULL OR plano IS NULL
+  `);
+} catch {}
+
 db.exec(`
   CREATE INDEX IF NOT EXISTS idx_rec_mes ON recebimentos(mes_ref);
   CREATE INDEX IF NOT EXISTS idx_gas_mes ON gastos(mes_ref);

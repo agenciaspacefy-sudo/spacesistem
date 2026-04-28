@@ -35,6 +35,24 @@ export function AuthProvider({ children }) {
     return () => window.removeEventListener('spacefy:unauthenticated', onUnauthorized);
   }, []);
 
+  // Quando o backend responde 402 (Payment Required), aplica o estado de
+  // expirado no usuário sem precisar deslogar — assim a tela de bloqueio
+  // aparece imediatamente.
+  useEffect(() => {
+    function onPaymentRequired(e) {
+      const billing = e?.detail?.billing;
+      setUser((u) => {
+        if (!u) return u;
+        return {
+          ...u,
+          billing: billing || { ...(u.billing || {}), expirado: true, em_trial: false }
+        };
+      });
+    }
+    window.addEventListener('spacefy:payment-required', onPaymentRequired);
+    return () => window.removeEventListener('spacefy:payment-required', onPaymentRequired);
+  }, []);
+
   async function login(email, senha) {
     const { user } = await auth.login(email, senha);
     setUser(user);

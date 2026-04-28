@@ -9,7 +9,8 @@ import crypto from 'crypto';
 import { fileURLToPath } from 'url';
 import fs from 'fs';
 import db from './db.js';
-import authRouter, { requireAuth, setupPassport } from './auth.js';
+import authRouter, { requireAuth, checkAccess, setupPassport } from './auth.js';
+import stripeWebhookHandler from './stripeWebhook.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const IS_PROD = process.env.NODE_ENV === 'production';
@@ -28,6 +29,15 @@ app.use(cors({
   origin: IS_PROD ? true : FRONTEND_URL,
   credentials: true
 }));
+
+// Stripe webhook precisa receber o corpo RAW (Buffer) para validar a assinatura.
+// Por isso é registrado ANTES do express.json() global.
+app.post(
+  '/webhook/stripe',
+  express.raw({ type: 'application/json' }),
+  stripeWebhookHandler
+);
+
 app.use(express.json({ limit: '5mb' }));
 app.use(cookieParser());
 app.use(session({
@@ -146,8 +156,9 @@ app.get('/api/public/relatorio/:token', (req, res) => {
   });
 });
 
-// Todas as rotas /api/* exigem autenticação
-app.use('/api', requireAuth);
+// Todas as rotas /api/* exigem autenticação E acesso ativo (trial ou plano).
+// Ordem importa: requireAuth popula req.user; checkAccess verifica billing.
+app.use('/api', requireAuth, checkAccess);
 
 // Healthcheck (usado pelo Railway)
 app.get('/healthz', (_req, res) => res.json({ ok: true }));

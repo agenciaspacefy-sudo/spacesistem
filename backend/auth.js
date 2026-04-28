@@ -60,6 +60,30 @@ export function requireAuth(req, res, next) {
   }
 }
 
+// Bloqueia acesso quando o trial expirou e não há assinatura ativa.
+// Deve ser usado APÓS requireAuth (depende de req.user).
+// Retorna 402 (Payment Required) com payload sinalizando o estado.
+export function checkAccess(req, res, next) {
+  if (!req.user?.id) return next();
+  try {
+    const u = findUserById(req.user.id);
+    if (!u) return next();
+    const { billing } = refreshBillingState(u);
+    req.billing = billing;
+    if (billing?.expirado) {
+      return res.status(402).json({
+        error: 'Acesso bloqueado — faça seu plano',
+        billing
+      });
+    }
+    next();
+  } catch (e) {
+    // Em caso de falha do middleware, não derruba a request — só loga.
+    console.warn('[checkAccess] erro:', e?.message);
+    next();
+  }
+}
+
 // ---------- DB helpers ----------
 function findUserByEmail(email) {
   return db.prepare('SELECT * FROM usuarios WHERE email = ?').get(email);
@@ -73,16 +97,88 @@ function findUserByGoogleId(googleId) {
   return db.prepare('SELECT * FROM usuarios WHERE google_id = ?').get(googleId);
 }
 
+const TRIAL_DAYS = 7;
+
 function createUser({ nome, email, senha_hash = null, google_id = null, avatar = null }) {
+  // Trial é configurado no momento da criação.
+  // datetime('now') no SQLite retorna UTC em formato 'YYYY-MM-DD HH:MM:SS'.
   const info = db
-    .prepare('INSERT INTO usuarios (nome, email, senha_hash, google_id, avatar) VALUES (?, ?, ?, ?, ?)')
+    .prepare(
+      `INSERT INTO usuarios
+        (nome, email, senha_hash, google_id, avatar,
+         trial_inicio, trial_fim, plano, assinatura_ativa)
+       VALUES (?, ?, ?, ?, ?,
+         datetime('now'), datetime('now', '+${TRIAL_DAYS} days'), 'trial', 0)`
+    )
     .run(nome, email, senha_hash, google_id, avatar);
   return findUserById(info.lastInsertRowid);
 }
 
+// Verifica se o trial expirou e atualiza o plano para 'expirado' se necessário.
+// Retorna o usuário atualizado e info de billing.
+function refreshBillingState(user) {
+  if (!user) return { user, billing: null };
+
+  const ehTrial = !user.plano || user.plano === 'trial';
+  let updated = user;
+
+  if (ehTrial && user.trial_fim) {
+    const fimMs = Date.parse(
+      user.trial_fim.includes('T') ? user.trial_fim : user.trial_fim.replace(' ', 'T') + 'Z'
+    );
+    if (!isNaN(fimMs) && fimMs < Date.now()) {
+      // Marca como expirado no banco
+      db.prepare("UPDATE usuarios SET plano = 'expirado' WHERE id = ?").run(user.id);
+      updated = findUserById(user.id);
+    }
+  }
+
+  return { user: updated, billing: computeBilling(updated) };
+}
+
+function computeBilling(u) {
+  if (!u) return null;
+  const plano = u.plano || 'trial';
+  const assinaturaAtiva = !!u.assinatura_ativa;
+  const expirado = plano === 'expirado' && !assinaturaAtiva;
+
+  let daysLeft = null;
+  if (u.trial_fim) {
+    const fimMs = Date.parse(
+      u.trial_fim.includes('T') ? u.trial_fim : u.trial_fim.replace(' ', 'T') + 'Z'
+    );
+    if (!isNaN(fimMs)) {
+      daysLeft = Math.max(0, Math.ceil((fimMs - Date.now()) / (24 * 60 * 60 * 1000)));
+    }
+  }
+
+  return {
+    plano,
+    assinatura_ativa: assinaturaAtiva,
+    expirado,
+    em_trial: plano === 'trial',
+    trial_inicio: u.trial_inicio,
+    trial_fim: u.trial_fim,
+    days_left: daysLeft
+  };
+}
+
 function publicUser(u) {
   if (!u) return null;
-  return { id: u.id, nome: u.nome, email: u.email, avatar: u.avatar };
+  return {
+    id: u.id,
+    nome: u.nome,
+    email: u.email,
+    avatar: u.avatar,
+    billing: computeBilling(u)
+  };
+}
+
+export function getUserBilling(userId) {
+  const u = findUserById(userId);
+  if (!u) return null;
+  const { billing } = refreshBillingState(u);
+  return billing;
 }
 
 // ---------- Passport (Google OAuth) ----------
@@ -179,7 +275,9 @@ router.get('/me', (req, res) => {
   try {
     const payload = jwt.verify(token, JWT_SECRET);
     const user = findUserById(payload.id);
-    res.json({ user: publicUser(user) });
+    if (!user) return res.json({ user: null });
+    const { user: refreshed } = refreshBillingState(user);
+    res.json({ user: publicUser(refreshed) });
   } catch {
     res.json({ user: null });
   }

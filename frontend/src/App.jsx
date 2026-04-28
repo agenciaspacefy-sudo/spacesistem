@@ -17,6 +17,8 @@ import Calculator from './components/Calculator.jsx';
 import FeedbackWidget from './components/FeedbackWidget.jsx';
 import RelatorioPublico from './components/RelatorioPublico.jsx';
 import Sidebar, { SidebarMobileToggle } from './components/Sidebar.jsx';
+import TrialBanner from './components/TrialBanner.jsx';
+import BlockedAccess from './components/BlockedAccess.jsx';
 import { SettingsProvider, useSettings } from './SettingsContext.jsx';
 import { AuthProvider, useAuth } from './AuthContext.jsx';
 import { ConfirmProvider } from './ConfirmContext.jsx';
@@ -143,6 +145,7 @@ function AppShell() {
       />
 
       <div className="app-main">
+        <TrialBanner onClickPlanos={() => setTab('planos')} />
         <header className="topbar">
           <div className="topbar-left">
             <SidebarMobileToggle onClick={() => setMobileNavOpen(true)} />
@@ -200,6 +203,13 @@ function AuthGate() {
     );
   }
   if (!user) return <AuthScreen />;
+
+  // Trial expirado / sem assinatura → bloqueia totalmente o sistema.
+  // Não monta SettingsProvider nem chamadas para /api (que retornariam 402).
+  if (user.billing?.expirado) {
+    return <BlockedAccess />;
+  }
+
   return (
     <SettingsProvider>
       <PrivacyProvider>

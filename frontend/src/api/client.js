@@ -14,6 +14,16 @@ async function request(url, options = {}) {
     err.status = 401;
     throw err;
   }
+  // 402 = Payment Required — trial expirado / sem assinatura
+  if (res.status === 402) {
+    let payload = null;
+    try { payload = await res.json(); } catch {}
+    window.dispatchEvent(new CustomEvent('spacefy:payment-required', { detail: payload }));
+    const err = new Error(payload?.error || 'Acesso bloqueado — faça seu plano');
+    err.status = 402;
+    err.billing = payload?.billing;
+    throw err;
+  }
   if (!res.ok) {
     const err = await res.json().catch(() => ({ error: res.statusText }));
     throw new Error(err.error || 'Request failed');

@@ -10,6 +10,7 @@ import Agenda from './components/Agenda.jsx';
 import Campanhas from './components/Campanhas.jsx';
 import Notas from './components/Notas.jsx';
 import Configuracoes from './components/Configuracoes.jsx';
+import Planos from './components/Planos.jsx';
 import AuthScreen from './components/AuthScreen.jsx';
 import Alerts from './components/Alerts.jsx';
 import Calculator from './components/Calculator.jsx';
@@ -20,6 +21,7 @@ import { SettingsProvider, useSettings } from './SettingsContext.jsx';
 import { AuthProvider, useAuth } from './AuthContext.jsx';
 import { ConfirmProvider } from './ConfirmContext.jsx';
 import { PrivacyProvider, usePrivacy } from './PrivacyContext.jsx';
+import { ToastProvider } from './ToastContext.jsx';
 import { currentMonth } from './utils.js';
 import { registerServiceWorker, requestNotificationPermission } from './notifications.js';
 
@@ -36,7 +38,8 @@ const PAGE_TITLES = {
   agenda: 'Agenda',
   notas: 'Notas',
   resumo: 'Resumo Mensal',
-  config: 'Configurações'
+  config: 'Configurações',
+  planos: 'Planos'
 };
 
 function useTheme() {
@@ -179,6 +182,7 @@ function AppShell() {
           {tab === 'agenda' && <Agenda />}
           {tab === 'notas' && <Notas />}
           {tab === 'config' && <Configuracoes />}
+          {tab === 'planos' && <Planos />}
         </main>
       </div>
       <FeedbackWidget />
@@ -218,9 +222,11 @@ export default function App() {
 
   return (
     <AuthProvider>
-      <ConfirmProvider>
-        <AuthGate />
-      </ConfirmProvider>
+      <ToastProvider>
+        <ConfirmProvider>
+          <AuthGate />
+        </ConfirmProvider>
+      </ToastProvider>
     </AuthProvider>
   );
 }

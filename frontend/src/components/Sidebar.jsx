@@ -114,6 +114,15 @@ function IconGear() {
     </Icon>
   );
 }
+function IconPlanos() {
+  // Crown / star — sugere upgrade/planos
+  return (
+    <Icon>
+      <path d="M2 20h20" />
+      <path d="M5 20l2-9 5 4 5-7 2 12" />
+    </Icon>
+  );
+}
 function IconSun() {
   return (
     <Icon>
@@ -230,6 +239,17 @@ export default function Sidebar({ tab, onTab, theme, onToggleTheme, mobileOpen, 
           >
             <span className="sidebar-item-icon"><IconGear /></span>
             <span className="sidebar-item-label">Configurações</span>
+          </button>
+
+          <button
+            type="button"
+            className={`sidebar-item ${tab === 'planos' ? 'active' : ''}`}
+            onClick={() => handleNav('planos')}
+            title={expanded ? undefined : 'Planos'}
+            data-tooltip="Planos"
+          >
+            <span className="sidebar-item-icon"><IconPlanos /></span>
+            <span className="sidebar-item-label">Planos</span>
           </button>
 
           <button

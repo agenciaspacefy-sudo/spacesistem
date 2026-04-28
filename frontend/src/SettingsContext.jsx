@@ -5,6 +5,7 @@ const SettingsContext = createContext(null);
 
 export function SettingsProvider({ children }) {
   const [settings, setSettings] = useState({
+    nome_agencia: '',
     chave_pix: '',
     whatsapp_dono: '',
     template_cobranca: '',

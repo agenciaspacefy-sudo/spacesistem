@@ -91,7 +91,13 @@ export default function Dashboard({ onNavigate }) {
     }
   }
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => {
+    load();
+    function onCobrancaPaga() { load(); }
+    window.addEventListener('spacefy:cobranca-paga', onCobrancaPaga);
+    return () => window.removeEventListener('spacefy:cobranca-paga', onCobrancaPaga);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // ----- MRR: soma das cobranças recorrentes não pagas (por cliente)
   // Pega o valor médio por mês de cada grupo de cobranças recorrentes ativas.

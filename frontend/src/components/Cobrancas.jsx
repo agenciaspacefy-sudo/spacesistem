@@ -12,6 +12,7 @@ import { generateReceipt } from '../receipt.js';
 import { showPaymentNotification } from '../notifications.js';
 import { useConfirm } from '../ConfirmContext.jsx';
 import { useFormatBRL, useFormatCnpj } from '../PrivacyContext.jsx';
+import { useToast } from '../ToastContext.jsx';
 
 function DownloadIcon() {
   return (
@@ -58,11 +59,11 @@ function GroupStatusBadge({ status }) {
   return <span className={`badge ${cls}`}>{status}</span>;
 }
 
-function TipoBadge({ value }) {
+function TipoLabel({ value }) {
   const isRecorrente = value === 'Recorrente';
   return (
-    <span className={`badge ${isRecorrente ? 'badge-recorrente' : 'badge-neutral'}`}>
-      {isRecorrente ? '↻ Recorrente' : 'Única'}
+    <span className={`cob-tipo-text ${isRecorrente ? 'cob-tipo-recorrente' : 'cob-tipo-unico'}`}>
+      {isRecorrente ? 'Recorrência Mensal' : 'Pagamento Único'}
     </span>
   );
 }
@@ -70,6 +71,7 @@ function TipoBadge({ value }) {
 export default function Cobrancas() {
   const { settings } = useSettings();
   const confirm = useConfirm();
+  const toast = useToast();
   const fmtBRL = useFormatBRL();
   const fmtCnpj = useFormatCnpj();
   const [rows, setRows] = useState([]);
@@ -158,14 +160,21 @@ export default function Cobrancas() {
   }
 
   async function handleMarcarPago(cob) {
-    const updated = await api.updateCobranca(cob.id, {
-      status: 'Pago',
-      data_pagamento: todayISO()
-    });
-    setRows((rs) => rs.map((r) => (r.id === cob.id ? updated : r)));
-    // Dispara notificação push do navegador (funciona mesmo com a aba minimizada)
-    showPaymentNotification(updated);
-    setReceiptModal(updated);
+    try {
+      const updated = await api.updateCobranca(cob.id, {
+        status: 'Pago',
+        data_pagamento: todayISO()
+      });
+      setRows((rs) => rs.map((r) => (r.id === cob.id ? updated : r)));
+      // Dispara notificação push do navegador (funciona mesmo com a aba minimizada)
+      showPaymentNotification(updated);
+      // Notifica o resto do sistema para refetch (Dashboard, Recebimentos, Resumo)
+      window.dispatchEvent(new CustomEvent('spacefy:cobranca-paga', { detail: updated }));
+      toast.success(`Pagamento de ${fmtBRL(updated.valor)} registrado!`);
+      setReceiptModal(updated);
+    } catch (e) {
+      toast.error('Falha ao registrar pagamento: ' + (e?.message || e));
+    }
   }
 
   function handleDownloadReceipt(cob) {
@@ -541,7 +550,7 @@ export default function Cobrancas() {
             <tr>
               <th style={{ width: 36 }}></th>
               <th>Cliente</th>
-              <th style={{ width: 120 }}>Tipo</th>
+              <th style={{ width: 180 }}>Tipo</th>
               <th className="right" style={{ width: 140 }}>Valor mensal</th>
               <th style={{ width: 120 }}>Parcelas</th>
               <th style={{ width: 120 }}>Pagas</th>
@@ -574,12 +583,14 @@ export default function Cobrancas() {
                       <ChevronIcon open={isOpen} />
                     </td>
                     <td>
-                      <div className="cell" style={{ fontWeight: 500, flexDirection: 'column', alignItems: 'flex-start', gap: 2 }}>
-                        <span>{g.cliente_nome}</span>
-                        {g.cliente_cnpj && <span style={{ fontSize: 11.5, color: 'var(--text-dim)' }}>{fmtCnpj(g.cliente_cnpj)}</span>}
+                      <div className="cell cob-cliente-cell">
+                        <span className="cob-cliente-nome">{g.cliente_nome}</span>
+                        {g.cliente_cnpj && (
+                          <span className="cob-cliente-cnpj">{fmtCnpj(g.cliente_cnpj)}</span>
+                        )}
                       </div>
                     </td>
-                    <td><TipoBadge value={tipo} /></td>
+                    <td><TipoLabel value={tipo} /></td>
                     <td className="right">{fmtBRL(valorMensal)}</td>
                     <td>
                       <span style={{ color: 'var(--text-dim)' }}>

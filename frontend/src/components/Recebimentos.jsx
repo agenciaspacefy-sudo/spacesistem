@@ -55,7 +55,13 @@ export default function Recebimentos({ mesFiltro }) {
     }
   }
 
-  useEffect(() => { load(); }, [mesFiltro]);
+  useEffect(() => {
+    load();
+    function onCobrancaPaga() { load(); }
+    window.addEventListener('spacefy:cobranca-paga', onCobrancaPaga);
+    return () => window.removeEventListener('spacefy:cobranca-paga', onCobrancaPaga);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mesFiltro]);
 
   useEffect(() => {
     setForm((f) => ({ ...f, mes_ref: mesFiltro || f.mes_ref }));

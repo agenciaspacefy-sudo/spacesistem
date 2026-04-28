@@ -209,5 +209,6 @@ seed.run('chave_pix', '');
 seed.run('whatsapp_dono', '');
 seed.run('template_cobranca', DEFAULT_TEMPLATE);
 seed.run('logo_data', '');
+seed.run('nome_agencia', 'Spacefy Marketing');
 
 export default db;

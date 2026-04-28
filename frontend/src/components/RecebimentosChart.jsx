@@ -125,7 +125,7 @@ export default function RecebimentosChart({ defaultPeriodo = 'mes', titulo = 'Re
   const [todos, setTodos] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  // Carrega todos os recebimentos pagos uma vez (dataset pequeno, simples e suficiente)
+  // Carrega todos os recebimentos pagos. Re-busca quando uma cobrança é marcada como paga.
   useEffect(() => {
     let cancelled = false;
     async function load() {
@@ -140,7 +140,12 @@ export default function RecebimentosChart({ defaultPeriodo = 'mes', titulo = 'Re
       }
     }
     load();
-    return () => { cancelled = true; };
+    function onCobrancaPaga() { load(); }
+    window.addEventListener('spacefy:cobranca-paga', onCobrancaPaga);
+    return () => {
+      cancelled = true;
+      window.removeEventListener('spacefy:cobranca-paga', onCobrancaPaga);
+    };
   }, []);
 
   const data = useMemo(() => buildSeries(periodo, todos), [periodo, todos]);

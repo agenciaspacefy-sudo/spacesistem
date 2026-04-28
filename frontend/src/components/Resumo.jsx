@@ -24,6 +24,9 @@ export default function Resumo({ mesFiltro }) {
 
   useEffect(() => {
     load();
+    function onCobrancaPaga() { load(); }
+    window.addEventListener('spacefy:cobranca-paga', onCobrancaPaga);
+    return () => window.removeEventListener('spacefy:cobranca-paga', onCobrancaPaga);
   }, []);
 
   const filtradas = useMemo(() => {

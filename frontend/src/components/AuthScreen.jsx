@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useAuth } from '../AuthContext.jsx';
 import Logo from './Logo.jsx';
+import SpaceBackground from './SpaceBackground.jsx';
 
 function GoogleIcon() {
   return (
@@ -96,8 +97,9 @@ export default function AuthScreen() {
   }
 
   return (
-    <div className="auth-screen">
-      <div className="auth-card">
+    <div className="auth-screen auth-screen-space">
+      <SpaceBackground />
+      <div className="auth-card auth-card-glass">
         <div className="auth-logo">
           <Logo />
         </div>

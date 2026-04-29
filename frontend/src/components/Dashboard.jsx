@@ -17,6 +17,8 @@ import {
   todayISO
 } from '../utils.js';
 import { useFormatBRL, usePrivacy } from '../PrivacyContext.jsx';
+import { useSettings } from '../SettingsContext.jsx';
+import { generateMonthlyReport } from '../reportPdf.js';
 import RecebimentosChart from './RecebimentosChart.jsx';
 
 function endOfWeekISO(baseIso) {
@@ -271,6 +273,179 @@ export default function Dashboard({ onNavigate }) {
           )}
         </div>
       </div>
+
+      {/* ----- RESUMO ANUAL (movido da aba Resumo) ----- */}
+      <ResumoAnualSection resumo={resumo} fmtBRL={fmtBRL} />
     </div>
+  );
+}
+
+// =========================================================
+// Resumo Anual (antes era aba dedicada)
+// =========================================================
+function ResumoAnualSection({ resumo, fmtBRL }) {
+  const { settings } = useSettings();
+  const [anoFiltro, setAnoFiltro] = useState(() => new Date().getFullYear());
+  const [exporting, setExporting] = useState(false);
+
+  const anosDisponiveis = useMemo(() => {
+    const set = new Set();
+    for (const r of resumo) {
+      const y = (r.mes || '').slice(0, 4);
+      if (y) set.add(Number(y));
+    }
+    set.add(new Date().getFullYear());
+    return [...set].sort((a, b) => b - a);
+  }, [resumo]);
+
+  const filtradas = useMemo(() => {
+    return resumo.filter((r) => (r.mes || '').startsWith(String(anoFiltro)));
+  }, [resumo, anoFiltro]);
+
+  const totais = useMemo(() => {
+    const receita = filtradas.reduce((s, r) => s + r.receita, 0);
+    const gastos = filtradas.reduce((s, r) => s + r.gastos, 0);
+    const lucro = receita - gastos;
+    const margem = receita > 0 ? (lucro / receita) * 100 : 0;
+    return { receita, gastos, lucro, margem };
+  }, [filtradas]);
+
+  const chartData = useMemo(() => {
+    return filtradas
+      .slice()
+      .sort((a, b) => a.mes.localeCompare(b.mes))
+      .map((r) => ({
+        mes: monthLabel(r.mes),
+        Receita: r.receita,
+        Pagamentos: r.gastos
+      }));
+  }, [filtradas]);
+
+  async function handleExportPdf() {
+    setExporting(true);
+    try {
+      generateMonthlyReport({
+        resumoRows: filtradas,
+        recebimentos: [],
+        gastos: [],
+        mesFiltro: '',
+        settings
+      });
+    } catch (e) {
+      alert('Erro ao gerar PDF: ' + (e?.message || e));
+    } finally { setExporting(false); }
+  }
+
+  return (
+    <section className="resumo-anual-section">
+      <div className="resumo-anual-header">
+        <div>
+          <h3 className="resumo-anual-title">Resumo Anual</h3>
+          <p className="resumo-anual-sub">Receita, pagamentos, lucro e margem por mês.</p>
+        </div>
+        <div className="resumo-anual-actions">
+          <select
+            value={anoFiltro}
+            onChange={(e) => setAnoFiltro(Number(e.target.value))}
+            title="Ano"
+          >
+            {anosDisponiveis.map((y) => <option key={y} value={y}>{y}</option>)}
+          </select>
+          <button
+            className="btn btn-primary btn-sm"
+            onClick={handleExportPdf}
+            disabled={exporting || filtradas.length === 0}
+          >
+            {exporting ? 'Gerando…' : '↓ Exportar PDF'}
+          </button>
+        </div>
+      </div>
+
+      {chartData.length > 0 && (
+        <div className="chart-card" style={{ marginBottom: 16 }}>
+          <div className="chart-header">
+            <div className="chart-title">Receita × Pagamentos</div>
+            <div style={{ color: 'var(--text-dim)', fontSize: 12.5 }}>{anoFiltro}</div>
+          </div>
+          <ResponsiveContainer width="100%" height={240}>
+            <BarChart data={chartData} margin={{ top: 8, right: 12, left: 0, bottom: 0 }}>
+              <defs>
+                <linearGradient id="dash-rec-anual" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="#16A34A" stopOpacity={0.95} />
+                  <stop offset="100%" stopColor="#16A34A" stopOpacity={0.55} />
+                </linearGradient>
+                <linearGradient id="dash-pag-anual" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="#DC2626" stopOpacity={0.95} />
+                  <stop offset="100%" stopColor="#DC2626" stopOpacity={0.55} />
+                </linearGradient>
+              </defs>
+              <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
+              <XAxis dataKey="mes" stroke="var(--text-dim)" fontSize={12} tickLine={false} axisLine={{ stroke: 'var(--border)' }} />
+              <YAxis stroke="var(--text-dim)" fontSize={12} tickLine={false} axisLine={{ stroke: 'var(--border)' }}
+                tickFormatter={(v) => v >= 1000 ? `R$${(v / 1000).toFixed(0)}k` : `R$${v}`} />
+              <Tooltip
+                cursor={{ fill: 'var(--row-hover)' }}
+                contentStyle={{
+                  background: 'var(--bg-2)',
+                  border: '1px solid var(--border)',
+                  borderRadius: 8,
+                  fontSize: 13
+                }}
+                formatter={(v) => fmtBRL(v)}
+              />
+              <Bar dataKey="Receita" fill="url(#dash-rec-anual)" radius={[6, 6, 0, 0]} maxBarSize={36} />
+              <Bar dataKey="Pagamentos" fill="url(#dash-pag-anual)" radius={[6, 6, 0, 0]} maxBarSize={36} />
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+      )}
+
+      <div className="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Mês</th>
+              <th className="right">Receita recebida</th>
+              <th className="right">Total pagamentos</th>
+              <th className="right">Lucro líquido</th>
+              <th className="right">Margem</th>
+            </tr>
+          </thead>
+          <tbody>
+            {filtradas.length === 0 && (
+              <tr>
+                <td colSpan={5}>
+                  <div className="empty-state">Nenhum lançamento em {anoFiltro}.</div>
+                </td>
+              </tr>
+            )}
+            {filtradas.map((r) => {
+              const lucroCls = r.lucro >= 0 ? 'pos' : 'neg';
+              const margemCls = r.margem >= 0 ? 'pos' : 'neg';
+              return (
+                <tr key={r.mes}>
+                  <td><div className="cell">{monthLabel(r.mes)}</div></td>
+                  <td><div className="cell mono" style={{ justifyContent: 'flex-end' }}>{fmtBRL(r.receita)}</div></td>
+                  <td><div className="cell mono" style={{ justifyContent: 'flex-end' }}>{fmtBRL(r.gastos)}</div></td>
+                  <td><div className={`cell mono ${lucroCls}`} style={{ justifyContent: 'flex-end' }}>{fmtBRL(r.lucro)}</div></td>
+                  <td><div className={`cell mono ${margemCls}`} style={{ justifyContent: 'flex-end' }}>{r.margem.toFixed(1).replace('.', ',')}%</div></td>
+                </tr>
+              );
+            })}
+          </tbody>
+          {filtradas.length > 1 && (
+            <tfoot>
+              <tr>
+                <td><div className="cell" style={{ fontWeight: 700 }}>Total {anoFiltro}</div></td>
+                <td><div className="cell mono pos" style={{ justifyContent: 'flex-end', fontWeight: 700 }}>{fmtBRL(totais.receita)}</div></td>
+                <td><div className="cell mono neg" style={{ justifyContent: 'flex-end', fontWeight: 700 }}>{fmtBRL(totais.gastos)}</div></td>
+                <td><div className={`cell mono ${totais.lucro >= 0 ? 'pos' : 'neg'}`} style={{ justifyContent: 'flex-end', fontWeight: 700 }}>{fmtBRL(totais.lucro)}</div></td>
+                <td><div className={`cell mono ${totais.margem >= 0 ? 'pos' : 'neg'}`} style={{ justifyContent: 'flex-end', fontWeight: 700 }}>{totais.margem.toFixed(1).replace('.', ',')}%</div></td>
+              </tr>
+            </tfoot>
+          )}
+        </table>
+      </div>
+    </section>
   );
 }

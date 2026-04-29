@@ -9,6 +9,7 @@ import {
   todayISO
 } from '../utils.js';
 import { generateReceipt } from '../receipt.js';
+import { generateReceiptAvulso } from '../receiptAvulso.js';
 import { showPaymentNotification } from '../notifications.js';
 import { useConfirm } from '../ConfirmContext.jsx';
 import { useFormatBRL, useFormatCnpj } from '../PrivacyContext.jsx';
@@ -85,6 +86,7 @@ export default function Cobrancas() {
   const [expanded, setExpanded] = useState({});
   const [editingGroup, setEditingGroup] = useState(null);
   const [savingEdit, setSavingEdit] = useState(false);
+  const [reciboAvulsoOpen, setReciboAvulsoOpen] = useState(false);
 
   function emptyForm() {
     return {
@@ -446,6 +448,9 @@ export default function Cobrancas() {
           )}
         </div>
         <div className="toolbar-right">
+          <button className="btn btn-ghost" onClick={() => setReciboAvulsoOpen(true)} title="Gerar recibo avulso em PDF (sem registrar no sistema)">
+            🧾 Gerar Recibo
+          </button>
           <button className="btn btn-primary" onClick={() => setShowForm((s) => !s)}>
             {showForm ? 'Cancelar' : '+ Nova cobrança'}
           </button>
@@ -823,6 +828,14 @@ export default function Cobrancas() {
         </div>
       )}
 
+      {reciboAvulsoOpen && (
+        <ReciboAvulsoModal
+          settings={settings}
+          toast={toast}
+          onClose={() => setReciboAvulsoOpen(false)}
+        />
+      )}
+
       {preview && (
         <div className="settings-section" style={{ marginTop: 20 }}>
           <h3>Prévia da mensagem — {preview.cob.cliente_nome}</h3>
@@ -853,6 +866,121 @@ export default function Cobrancas() {
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+// ---------- Modal: gerar recibo avulso ----------
+function ReciboAvulsoModal({ settings, toast, onClose }) {
+  const [form, setForm] = useState({
+    cliente_nome: '',
+    descricao: '',
+    valor: '',
+    data_pagamento: todayISO(),
+    forma_pagamento: 'PIX'
+  });
+  const [busy, setBusy] = useState(false);
+
+  function handleGenerate(e) {
+    e.preventDefault();
+    if (!form.cliente_nome.trim() || !form.descricao.trim() || !form.valor || !form.data_pagamento) {
+      toast?.error('Preencha todos os campos obrigatórios.');
+      return;
+    }
+    setBusy(true);
+    try {
+      const numero = generateReceiptAvulso(
+        { ...form, valor: Number(form.valor) },
+        settings || {}
+      );
+      toast?.success(`Recibo ${numero} gerado!`);
+      onClose();
+    } catch (err) {
+      toast?.error('Falha ao gerar PDF: ' + (err?.message || err));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div className="modal-backdrop" onClick={onClose}>
+      <form className="modal modal-wide" onClick={(e) => e.stopPropagation()} onSubmit={handleGenerate}>
+        <div className="modal-head">
+          <h3 className="modal-title">Gerar recibo avulso</h3>
+          <button type="button" className="modal-close" onClick={onClose} aria-label="Fechar">×</button>
+        </div>
+        <div className="modal-body">
+          <p className="modal-text" style={{ fontSize: 12.5, marginBottom: 10 }}>
+            Esse recibo é gerado <strong>apenas em PDF</strong> — não fica salvo no sistema.
+            Use para pagamentos pontuais, fora do fluxo de cobranças.
+          </p>
+
+          <div className="form-grid">
+            <div className="field field-full">
+              <label>Nome do cliente *</label>
+              <input
+                type="text"
+                value={form.cliente_nome}
+                onChange={(e) => setForm({ ...form, cliente_nome: e.target.value })}
+                placeholder="Quem está pagando"
+                required
+                autoFocus
+              />
+            </div>
+            <div className="field field-full">
+              <label>Descrição do serviço/produto *</label>
+              <textarea
+                rows={2}
+                value={form.descricao}
+                onChange={(e) => setForm({ ...form, descricao: e.target.value })}
+                placeholder="Ex.: Pacote de criativos para campanha de Maio"
+                required
+              />
+            </div>
+            <div className="field">
+              <label>Valor (R$) *</label>
+              <input
+                type="number"
+                step="0.01"
+                min="0.01"
+                value={form.valor}
+                onChange={(e) => setForm({ ...form, valor: e.target.value })}
+                required
+              />
+            </div>
+            <div className="field">
+              <label>Data do pagamento *</label>
+              <input
+                type="date"
+                value={form.data_pagamento}
+                onChange={(e) => setForm({ ...form, data_pagamento: e.target.value })}
+                required
+              />
+            </div>
+            <div className="field field-full">
+              <label>Forma de pagamento</label>
+              <select
+                value={form.forma_pagamento}
+                onChange={(e) => setForm({ ...form, forma_pagamento: e.target.value })}
+              >
+                <option>PIX</option>
+                <option>Dinheiro</option>
+                <option>Cartão</option>
+                <option>Transferência</option>
+              </select>
+            </div>
+          </div>
+
+          <div className="modal-actions" style={{ marginTop: 18 }}>
+            <button type="button" className="btn btn-ghost" onClick={onClose} disabled={busy}>
+              Cancelar
+            </button>
+            <button type="submit" className="btn btn-primary" disabled={busy}>
+              {busy ? 'Gerando…' : '↓ Gerar PDF'}
+            </button>
+          </div>
+        </div>
+      </form>
     </div>
   );
 }

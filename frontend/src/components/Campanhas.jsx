@@ -172,7 +172,7 @@ function CampanhaFormModal({ clientes, onClose, onSave }) {
 }
 
 // -------------- Card de campanha --------------
-function CampanhaCard({ c, onOpen, fmtBRL }) {
+function CampanhaCard({ c, onOpen, onInvite, fmtBRL }) {
   const roas = calcRoas(c.investimento_mes, c.resultado_mes);
   const pct = percentUsado(c.investimento_mes, c.orcamento_mensal);
   const orcamentoAlto = pct >= 90 && c.status === 'Ativa';
@@ -223,12 +223,142 @@ function CampanhaCard({ c, onOpen, fmtBRL }) {
       <div className="campanha-card-footer">
         <RoasBadge roas={roas} />
         <span className={`badge badge-status-${c.status.toLowerCase()}`}>{c.status}</span>
+        <span
+          className="campanha-card-invite"
+          role="button"
+          tabIndex={0}
+          title={c.acesso_token ? 'Ver/copiar link do cliente' : 'Convidar cliente para ver os resultados'}
+          onClick={(e) => { e.stopPropagation(); onInvite?.(c); }}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+              e.preventDefault(); e.stopPropagation(); onInvite?.(c);
+            }
+          }}
+        >
+          {c.acesso_token ? '🔗 Link do cliente' : '✉ Convidar cliente'}
+        </span>
       </div>
 
       {orcamentoAlto && (
         <div className="campanha-card-flag">⚠ Orçamento em {pct.toFixed(0)}%</div>
       )}
     </button>
+  );
+}
+
+function CampanhaInviteModal({ campanha, onClose, onTokenChange }) {
+  const [email, setEmail] = useState(campanha.acesso_email || '');
+  const [token, setToken] = useState(campanha.acesso_token || null);
+  const [busy, setBusy] = useState(false);
+  const [copied, setCopied] = useState(false);
+
+  const link = token
+    ? `${window.location.origin}/campanha/${token}`
+    : '';
+
+  async function handleGerar() {
+    setBusy(true);
+    try {
+      const r = await api.gerarAcessoCampanhaToken(campanha.id, email || null);
+      setToken(r.acesso_token);
+      onTokenChange?.(r.acesso_token, r.acesso_email);
+    } finally { setBusy(false); }
+  }
+
+  async function handleRevogar() {
+    setBusy(true);
+    try {
+      await api.revogarAcessoCampanhaToken(campanha.id);
+      setToken(null);
+      onTokenChange?.(null, null);
+    } finally { setBusy(false); }
+  }
+
+  function handleCopy() {
+    if (!link) return;
+    navigator.clipboard?.writeText(link).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    }).catch(() => window.prompt('Copie o link:', link));
+  }
+
+  function abrirEmail() {
+    if (!email || !link) return;
+    const subject = 'Acesso aos resultados da sua campanha — SpaceSystem';
+    const body =
+      `Olá!\n\n` +
+      `Acesse os resultados em tempo real da sua campanha "${campanha.nome}" pelo link abaixo:\n\n` +
+      `${link}\n\n` +
+      `O link mantém você atualizado com investimento, resultado e ROAS.\n\n` +
+      `— Spacefy Marketing`;
+    window.location.href =
+      `mailto:${encodeURIComponent(email)}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+  }
+
+  return (
+    <div className="modal-backdrop" onClick={onClose}>
+      <div className="modal" onClick={(e) => e.stopPropagation()}>
+        <div className="modal-head">
+          <h3 className="modal-title">Convidar cliente</h3>
+          <button className="modal-close" onClick={onClose} aria-label="Fechar">×</button>
+        </div>
+        <div className="modal-body">
+          <div className="modal-sub">
+            Campanha: <strong>{campanha.nome}</strong>
+          </div>
+
+          <label className="label" style={{ marginTop: 12 }}>E-mail do cliente</label>
+          <input
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            placeholder="cliente@exemplo.com"
+            disabled={busy}
+          />
+
+          {!token ? (
+            <>
+              <p className="modal-text" style={{ marginTop: 12, fontSize: 12.5 }}>
+                Ao gerar o link, qualquer pessoa com o endereço pode visualizar
+                os resultados desta campanha em tempo real, sem precisar de login.
+              </p>
+              <div className="modal-actions" style={{ marginTop: 14 }}>
+                <button className="btn btn-ghost" onClick={onClose} disabled={busy}>Cancelar</button>
+                <button className="btn btn-primary" onClick={handleGerar} disabled={busy}>
+                  {busy ? 'Gerando…' : 'Gerar link'}
+                </button>
+              </div>
+            </>
+          ) : (
+            <>
+              <label className="label" style={{ marginTop: 12 }}>Link do cliente</label>
+              <div className="link-row">
+                <input className="link-input" value={link} readOnly onFocus={(e) => e.target.select()} />
+                <button className="btn btn-primary btn-sm" onClick={handleCopy}>
+                  {copied ? '✓ Copiado' : 'Copiar'}
+                </button>
+              </div>
+              <div className="modal-actions modal-actions-split" style={{ marginTop: 14 }}>
+                <button className="btn btn-ghost btn-danger" onClick={handleRevogar} disabled={busy}>
+                  Revogar
+                </button>
+                <div className="modal-actions-right">
+                  <button
+                    className="btn btn-primary"
+                    onClick={abrirEmail}
+                    disabled={!email || busy}
+                    title={email ? 'Abrir cliente de email com mensagem pronta' : 'Preencha o e-mail antes'}
+                  >
+                    Enviar por e-mail
+                  </button>
+                  <button className="btn btn-ghost" onClick={onClose}>Concluir</button>
+                </div>
+              </div>
+            </>
+          )}
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -242,6 +372,7 @@ export default function Campanhas() {
   const [loading, setLoading] = useState(false);
   const [showForm, setShowForm] = useState(false);
   const [detalhe, setDetalhe] = useState(null);
+  const [inviteCamp, setInviteCamp] = useState(null);
 
   // Filtros
   const [fCliente, setFCliente] = useState('');
@@ -386,7 +517,7 @@ export default function Campanhas() {
       ) : (
         <div className="campanhas-grid">
           {filtradas.map((c) => (
-            <CampanhaCard key={c.id} c={c} onOpen={setDetalhe} fmtBRL={fmtBRL} />
+            <CampanhaCard key={c.id} c={c} onOpen={setDetalhe} onInvite={setInviteCamp} fmtBRL={fmtBRL} />
           ))}
         </div>
       )}
@@ -406,6 +537,19 @@ export default function Campanhas() {
           onClose={() => setDetalhe(null)}
           onSave={handleSaved}
           onDelete={handleDelete}
+        />
+      )}
+
+      {inviteCamp && (
+        <CampanhaInviteModal
+          campanha={inviteCamp}
+          onClose={() => setInviteCamp(null)}
+          onTokenChange={(token, email) => {
+            setCampanhas((cs) => cs.map((c) =>
+              c.id === inviteCamp.id ? { ...c, acesso_token: token, acesso_email: email } : c
+            ));
+            setInviteCamp((c) => c ? { ...c, acesso_token: token, acesso_email: email } : c);
+          }}
         />
       )}
     </div>

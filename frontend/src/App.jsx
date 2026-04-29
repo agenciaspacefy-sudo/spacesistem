@@ -3,6 +3,7 @@ import Dashboard from './components/Dashboard.jsx';
 import Recebimentos from './components/Recebimentos.jsx';
 import Gastos from './components/Gastos.jsx';
 import Resumo from './components/Resumo.jsx';
+import Conteudo from './components/Conteudo.jsx';
 import Clientes from './components/Clientes.jsx';
 import Cobrancas from './components/Cobrancas.jsx';
 import Tarefas from './components/Tarefas.jsx';
@@ -16,8 +17,10 @@ import Alerts from './components/Alerts.jsx';
 import Calculator from './components/Calculator.jsx';
 import FeedbackWidget from './components/FeedbackWidget.jsx';
 import RelatorioPublico from './components/RelatorioPublico.jsx';
+import CampanhaPublica from './components/CampanhaPublica.jsx';
 import Sidebar, { SidebarMobileToggle } from './components/Sidebar.jsx';
 import TrialBanner from './components/TrialBanner.jsx';
+import TrialBadge from './components/TrialBadge.jsx';
 import BlockedAccess from './components/BlockedAccess.jsx';
 import { SettingsProvider, useSettings } from './SettingsContext.jsx';
 import { AuthProvider, useAuth } from './AuthContext.jsx';
@@ -27,7 +30,7 @@ import { ToastProvider } from './ToastContext.jsx';
 import { currentMonth } from './utils.js';
 import { registerServiceWorker, requestNotificationPermission } from './notifications.js';
 
-const TABS_WITH_MES = new Set(['recebimentos', 'gastos', 'resumo']);
+const TABS_WITH_MES = new Set(['recebimentos', 'gastos']);
 
 const PAGE_TITLES = {
   dashboard: 'Dashboard',
@@ -36,10 +39,10 @@ const PAGE_TITLES = {
   clientes: 'Clientes',
   cobrancas: 'Cobranças',
   campanhas: 'Campanhas',
+  conteudo: 'Calendário de Conteúdo',
   tarefas: 'Tarefas',
   agenda: 'Agenda',
   notas: 'Notas',
-  resumo: 'Resumo Mensal',
   config: 'Configurações',
   planos: 'Planos'
 };
@@ -153,6 +156,7 @@ function AppShell() {
           </div>
           <div className="topbar-actions">
             <Clock />
+            <TrialBadge onClickPlanos={() => setTab('planos')} />
             <Calculator />
             <Alerts onNavigate={setTab} />
             <PrivacyToggle />
@@ -180,8 +184,8 @@ function AppShell() {
           {tab === 'clientes' && <Clientes />}
           {tab === 'cobrancas' && <Cobrancas />}
           {tab === 'campanhas' && <Campanhas />}
+          {tab === 'conteudo' && <Conteudo />}
           {tab === 'tarefas' && <Tarefas />}
-          {tab === 'resumo' && <Resumo mesFiltro={mesFiltro} />}
           {tab === 'agenda' && <Agenda />}
           {tab === 'notas' && <Notas />}
           {tab === 'config' && <Configuracoes />}
@@ -226,9 +230,16 @@ function publicReportToken() {
   return m ? decodeURIComponent(m[1]) : null;
 }
 
+function publicCampanhaToken() {
+  const m = window.location.pathname.match(/^\/campanha\/([^/?#]+)/);
+  return m ? decodeURIComponent(m[1]) : null;
+}
+
 export default function App() {
   const token = publicReportToken();
   if (token) return <RelatorioPublico token={token} />;
+  const campToken = publicCampanhaToken();
+  if (campToken) return <CampanhaPublica token={campToken} />;
 
   return (
     <AuthProvider>

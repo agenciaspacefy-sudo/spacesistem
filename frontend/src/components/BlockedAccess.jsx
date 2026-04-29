@@ -16,9 +16,9 @@ export default function BlockedAccess() {
 
         <h1 className="blocked-title">Seu período de teste encerrou</h1>
         <p className="blocked-sub">
-          Para continuar usando o SpaceSystem, escolha um plano abaixo.
-          Seus dados estão seguros e voltam ao acessar normalmente assim que a
-          assinatura for confirmada.
+          Os 14 dias de teste grátis chegaram ao fim. Para continuar usando o
+          SpaceSystem, escolha um plano abaixo. Seus dados estão seguros e o
+          acesso volta automaticamente assim que a assinatura for confirmada.
         </p>
 
         <div className="blocked-plans">

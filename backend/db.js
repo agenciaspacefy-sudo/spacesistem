@@ -183,7 +183,7 @@ try { db.exec('ALTER TABLE usuarios ADD COLUMN stripe_subscription_id TEXT'); } 
 try { db.exec('ALTER TABLE usuarios ADD COLUMN assinatura_ativa INTEGER DEFAULT 0'); } catch {}
 
 // Backfill: usuários existentes sem trial_inicio recebem trial baseado em criado_em
-// (se já passou 7 dias desde o cadastro, ficam expirados).
+// (se já passou 14 dias desde o cadastro, ficam expirados).
 try {
   db.exec(`
     UPDATE usuarios
@@ -191,13 +191,52 @@ try {
       trial_inicio = COALESCE(trial_inicio, criado_em, datetime('now')),
       trial_fim = COALESCE(
         trial_fim,
-        datetime(COALESCE(criado_em, datetime('now')), '+7 days')
+        datetime(COALESCE(criado_em, datetime('now')), '+14 days')
       ),
       plano = COALESCE(plano, 'trial'),
       assinatura_ativa = COALESCE(assinatura_ativa, 0)
     WHERE trial_inicio IS NULL OR trial_fim IS NULL OR plano IS NULL
   `);
 } catch {}
+
+// ---------- Migrações de campanha pública + conteúdo ----------
+try { db.exec('ALTER TABLE campanhas ADD COLUMN acesso_token TEXT'); } catch {}
+try { db.exec('ALTER TABLE campanhas ADD COLUMN acesso_email TEXT'); } catch {}
+
+// Tabela para histórico de ROAS por campanha (snapshots mensais)
+db.exec(`
+  CREATE TABLE IF NOT EXISTS campanha_roas_snapshots (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    campanha_id INTEGER NOT NULL,
+    ano_mes TEXT NOT NULL,
+    investimento REAL DEFAULT 0,
+    resultado REAL DEFAULT 0,
+    roas REAL DEFAULT 0,
+    updated_at TEXT DEFAULT (datetime('now')),
+    UNIQUE(campanha_id, ano_mes),
+    FOREIGN KEY (campanha_id) REFERENCES campanhas(id) ON DELETE CASCADE
+  );
+`);
+
+// Tabela de conteúdos (calendário editorial)
+db.exec(`
+  CREATE TABLE IF NOT EXISTS conteudos (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    cliente_id INTEGER,
+    titulo TEXT NOT NULL DEFAULT '',
+    descricao TEXT,
+    data_pub TEXT NOT NULL,
+    plataformas TEXT NOT NULL DEFAULT '[]',
+    tipo TEXT NOT NULL DEFAULT 'Feed',
+    status TEXT NOT NULL DEFAULT 'Planejado',
+    created_at TEXT DEFAULT (datetime('now')),
+    updated_at TEXT DEFAULT (datetime('now')),
+    FOREIGN KEY (cliente_id) REFERENCES clientes(id) ON DELETE SET NULL
+  );
+  CREATE INDEX IF NOT EXISTS idx_cont_data ON conteudos(data_pub);
+  CREATE INDEX IF NOT EXISTS idx_cont_cliente ON conteudos(cliente_id);
+  CREATE INDEX IF NOT EXISTS idx_camp_token ON campanhas(acesso_token);
+`);
 
 db.exec(`
   CREATE INDEX IF NOT EXISTS idx_rec_mes ON recebimentos(mes_ref);

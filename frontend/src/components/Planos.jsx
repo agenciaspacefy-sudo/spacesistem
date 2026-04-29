@@ -16,8 +16,8 @@ export default function Planos() {
             <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
           </svg>
         </span>
-        <div>
-          <strong>Teste grátis por 7 dias</strong>
+        <div className="planos-trial-text">
+          <strong>Teste grátis por 14 dias</strong>
           <span>Use todos os recursos sem compromisso. Cancele quando quiser.</span>
         </div>
       </div>

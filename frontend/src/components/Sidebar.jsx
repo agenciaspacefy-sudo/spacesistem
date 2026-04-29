@@ -75,6 +75,18 @@ function IconAgenda() {
     </Icon>
   );
 }
+function IconConteudo() {
+  // Calendário com check (calendário editorial)
+  return (
+    <Icon>
+      <rect x="3" y="4" width="18" height="18" rx="2" />
+      <line x1="3" y1="10" x2="21" y2="10" />
+      <line x1="16" y1="2" x2="16" y2="6" />
+      <line x1="8" y1="2" x2="8" y2="6" />
+      <polyline points="9 16 11 18 15 14" />
+    </Icon>
+  );
+}
 function IconResumo() {
   return (
     <Icon>
@@ -165,10 +177,10 @@ const NAV_ITEMS = [
   { id: 'clientes',    label: 'Clientes',      Icon: IconClientes },
   { id: 'cobrancas',   label: 'Cobranças',     Icon: IconCobrancas },
   { id: 'campanhas',   label: 'Campanhas',     Icon: IconCampanhas },
+  { id: 'conteudo',    label: 'Conteúdo',      Icon: IconConteudo },
   { id: 'tarefas',     label: 'Tarefas',       Icon: IconTarefas },
   { id: 'agenda',      label: 'Agenda',        Icon: IconAgenda },
-  { id: 'notas',       label: 'Notas',         Icon: IconNotas },
-  { id: 'resumo',      label: 'Resumo Mensal', Icon: IconResumo }
+  { id: 'notas',       label: 'Notas',         Icon: IconNotas }
 ];
 
 // --------------- Sidebar ---------------
@@ -204,7 +216,7 @@ export default function Sidebar({ tab, onTab, theme, onToggleTheme, mobileOpen, 
         {/* --- Topo: logo --- */}
         <div className="sidebar-brand" onClick={() => handleNav('dashboard')} role="button" tabIndex={0}>
           <div className="sidebar-brand-mark">
-            <LogoMark size={28} />
+            <LogoMark size={expanded ? 44 : 40} />
           </div>
           <div className="sidebar-brand-text">
             <span>Space</span><span className="accent">System</span>

@@ -49,6 +49,22 @@ export async function fetchRelatorioPublico(token) {
   return res.json();
 }
 
+export async function fetchCampanhaPublica(token) {
+  const res = await fetch(`/api/public/campanha/${encodeURIComponent(token)}`, {
+    headers: { 'Content-Type': 'application/json' }
+  });
+  if (res.status === 404) {
+    const err = new Error('Campanha não encontrada');
+    err.status = 404;
+    throw err;
+  }
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ error: res.statusText }));
+    throw new Error(err.error || 'Request failed');
+  }
+  return res.json();
+}
+
 export const auth = {
   me: () => request('/auth/me'),
   config: () => request('/auth/config'),
@@ -125,6 +141,13 @@ export const api = {
   updateCampanha: (id, data) => request(`${API}/campanhas/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
   deleteCampanha: (id) => request(`${API}/campanhas/${id}`, { method: 'DELETE' }),
   campanhasResumo: () => request(`${API}/campanhas/resumo`),
+  gerarAcessoCampanhaToken: (id, email) =>
+    request(`${API}/campanhas/${id}/acesso-token`, {
+      method: 'POST',
+      body: JSON.stringify({ email })
+    }),
+  revogarAcessoCampanhaToken: (id) =>
+    request(`${API}/campanhas/${id}/acesso-token`, { method: 'DELETE' }),
 
   // Notas
   listNotas: (q, incluir) => {
@@ -139,6 +162,20 @@ export const api = {
   deleteNota: (id) => request(`${API}/notas/${id}`, { method: 'DELETE' }),
   concluirNota: (id, desfazer = false) =>
     request(`${API}/notas/${id}/concluir`, { method: 'POST', body: JSON.stringify({ desfazer }) }),
+
+  // Conteúdos (calendário editorial)
+  listConteudos: (params = {}) => {
+    const q = new URLSearchParams();
+    if (params.de) q.set('de', params.de);
+    if (params.ate) q.set('ate', params.ate);
+    if (params.cliente_id) q.set('cliente_id', params.cliente_id);
+    if (params.plataforma) q.set('plataforma', params.plataforma);
+    const qs = q.toString();
+    return request(`${API}/conteudos${qs ? '?' + qs : ''}`);
+  },
+  createConteudo: (data) => request(`${API}/conteudos`, { method: 'POST', body: JSON.stringify(data) }),
+  updateConteudo: (id, data) => request(`${API}/conteudos/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+  deleteConteudo: (id) => request(`${API}/conteudos/${id}`, { method: 'DELETE' }),
 
   // Reuniões de campanha
   listReunioes: (campanhaId) => request(`${API}/campanhas/${campanhaId}/reunioes`),

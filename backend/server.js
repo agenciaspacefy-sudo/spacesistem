@@ -156,6 +156,84 @@ app.get('/api/public/relatorio/:token', (req, res) => {
   });
 });
 
+// ---------- ACESSO PÚBLICO POR CAMPANHA (sem autenticação) ----------
+app.get('/api/public/campanha/:token', (req, res) => {
+  res.setHeader('X-Robots-Tag', 'noindex, nofollow');
+  res.setHeader('Cache-Control', 'no-store');
+
+  const token = String(req.params.token || '').trim();
+  if (!token || token.length < 16) return res.status(404).json({ error: 'Campanha não encontrada' });
+
+  const camp = db
+    .prepare(`
+      SELECT c.id, c.cliente_id, c.nome, c.plataforma, c.objetivo, c.status,
+             c.orcamento_mensal, c.investimento_mes, c.resultado_mes, c.data_inicio,
+             cl.nome AS cliente_nome
+      FROM campanhas c
+      LEFT JOIN clientes cl ON cl.id = c.cliente_id
+      WHERE c.acesso_token = ?
+    `)
+    .get(token);
+
+  if (!camp) return res.status(404).json({ error: 'Campanha não encontrada' });
+
+  const investido = Number(camp.investimento_mes) || 0;
+  const resultado = Number(camp.resultado_mes) || 0;
+  const roas = investido > 0 ? resultado / investido : 0;
+
+  // Auto-snapshot do mês atual para construir histórico
+  const ym = currentYearMonth();
+  try {
+    db.prepare(`
+      INSERT INTO campanha_roas_snapshots (campanha_id, ano_mes, investimento, resultado, roas, updated_at)
+      VALUES (?, ?, ?, ?, ?, datetime('now'))
+      ON CONFLICT(campanha_id, ano_mes) DO UPDATE SET
+        investimento = excluded.investimento,
+        resultado = excluded.resultado,
+        roas = excluded.roas,
+        updated_at = excluded.updated_at
+    `).run(camp.id, ym, investido, resultado, roas);
+  } catch (e) {
+    console.warn('[campanha-publica] snapshot falhou:', e?.message);
+  }
+
+  // Histórico dos últimos 6 meses
+  const meses = [];
+  const now = new Date();
+  for (let i = 5; i >= 0; i--) {
+    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    meses.push(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`);
+  }
+  const historico = db
+    .prepare(`
+      SELECT ano_mes, investimento, resultado, roas
+      FROM campanha_roas_snapshots
+      WHERE campanha_id = ? AND ano_mes IN (${meses.map(() => '?').join(',')})
+      ORDER BY ano_mes ASC
+    `)
+    .all(camp.id, ...meses);
+
+  res.json({
+    campanha: {
+      id: camp.id,
+      nome: camp.nome,
+      plataforma: camp.plataforma,
+      objetivo: camp.objetivo,
+      status: camp.status,
+      cliente_nome: camp.cliente_nome,
+      data_inicio: camp.data_inicio
+    },
+    metrics: {
+      investimento: investido,
+      resultado,
+      roas,
+      orcamento_mensal: Number(camp.orcamento_mensal) || 0
+    },
+    historico,
+    atualizado_em: new Date().toISOString()
+  });
+});
+
 // Todas as rotas /api/* exigem autenticação E acesso ativo (trial ou plano).
 // Ordem importa: requireAuth popula req.user; checkAccess verifica billing.
 app.use('/api', requireAuth, checkAccess);
@@ -603,6 +681,31 @@ app.delete('/api/campanhas/:id', (req, res) => {
   res.json({ ok: true });
 });
 
+// Gera token de acesso público para uma campanha (uso pelo cliente final)
+app.post('/api/campanhas/:id/acesso-token', (req, res) => {
+  try {
+    const camp = db.prepare('SELECT id, acesso_token FROM campanhas WHERE id = ?').get(req.params.id);
+    if (!camp) return res.status(404).json({ error: 'Campanha não encontrada' });
+    const email = (req.body?.email || '').trim() || null;
+    const token = camp.acesso_token || crypto.randomUUID();
+    db.prepare('UPDATE campanhas SET acesso_token = ?, acesso_email = ? WHERE id = ?')
+      .run(token, email, req.params.id);
+    res.json({ acesso_token: token, acesso_email: email });
+  } catch (e) {
+    res.status(400).json({ error: e.message });
+  }
+});
+
+app.delete('/api/campanhas/:id/acesso-token', (req, res) => {
+  try {
+    db.prepare('UPDATE campanhas SET acesso_token = NULL, acesso_email = NULL WHERE id = ?')
+      .run(req.params.id);
+    res.json({ ok: true });
+  } catch (e) {
+    res.status(400).json({ error: e.message });
+  }
+});
+
 // Resumo agregado (para cards do topo)
 app.get('/api/campanhas/resumo', (_req, res) => {
   const row = db.prepare(`
@@ -774,6 +877,99 @@ app.get('/api/resumo', (req, res) => {
     .sort((a, b) => b.mes.localeCompare(a.mes));
 
   res.json(resumo);
+});
+
+// ---------- CONTEÚDOS (calendário editorial) ----------
+app.get('/api/conteudos', (req, res) => {
+  const { de, ate, cliente_id, plataforma } = req.query;
+  let where = '1=1';
+  const params = [];
+  if (de) { where += ' AND data_pub >= ?'; params.push(de); }
+  if (ate) { where += ' AND data_pub <= ?'; params.push(ate); }
+  if (cliente_id) { where += ' AND cliente_id = ?'; params.push(Number(cliente_id)); }
+  const rows = db
+    .prepare(`
+      SELECT c.*, cl.nome AS cliente_nome
+      FROM conteudos c
+      LEFT JOIN clientes cl ON cl.id = c.cliente_id
+      WHERE ${where}
+      ORDER BY data_pub ASC
+    `)
+    .all(...params);
+
+  // Filtro por plataforma é feito em JS (plataformas é JSON-string)
+  const out = plataforma
+    ? rows.filter((r) => {
+        try { return JSON.parse(r.plataformas || '[]').includes(plataforma); }
+        catch { return false; }
+      })
+    : rows;
+
+  // Parse plataformas pra facilitar no front
+  res.json(out.map((r) => ({
+    ...r,
+    plataformas: (() => {
+      try { return JSON.parse(r.plataformas || '[]'); } catch { return []; }
+    })()
+  })));
+});
+
+app.post('/api/conteudos', (req, res) => {
+  try {
+    const b = req.body || {};
+    const plataformas = Array.isArray(b.plataformas) ? b.plataformas : [];
+    const info = db.prepare(`
+      INSERT INTO conteudos (cliente_id, titulo, descricao, data_pub, plataformas, tipo, status)
+      VALUES (?, ?, ?, ?, ?, ?, ?)
+    `).run(
+      b.cliente_id ? Number(b.cliente_id) : null,
+      String(b.titulo || ''),
+      String(b.descricao || ''),
+      String(b.data_pub || ''),
+      JSON.stringify(plataformas),
+      String(b.tipo || 'Feed'),
+      String(b.status || 'Planejado')
+    );
+    const row = db.prepare('SELECT * FROM conteudos WHERE id = ?').get(info.lastInsertRowid);
+    res.status(201).json({
+      ...row,
+      plataformas: (() => { try { return JSON.parse(row.plataformas || '[]'); } catch { return []; } })()
+    });
+  } catch (e) { res.status(400).json({ error: e.message }); }
+});
+
+app.put('/api/conteudos/:id', (req, res) => {
+  try {
+    const fields = [];
+    const values = [];
+    const b = req.body || {};
+    if (b.cliente_id !== undefined) { fields.push('cliente_id = ?'); values.push(b.cliente_id ? Number(b.cliente_id) : null); }
+    if (b.titulo !== undefined)     { fields.push('titulo = ?');     values.push(String(b.titulo)); }
+    if (b.descricao !== undefined)  { fields.push('descricao = ?');  values.push(String(b.descricao)); }
+    if (b.data_pub !== undefined)   { fields.push('data_pub = ?');   values.push(String(b.data_pub)); }
+    if (b.plataformas !== undefined) {
+      fields.push('plataformas = ?');
+      values.push(JSON.stringify(Array.isArray(b.plataformas) ? b.plataformas : []));
+    }
+    if (b.tipo !== undefined)       { fields.push('tipo = ?');       values.push(String(b.tipo)); }
+    if (b.status !== undefined)     { fields.push('status = ?');     values.push(String(b.status)); }
+    if (fields.length > 0) {
+      fields.push("updated_at = datetime('now')");
+      db.prepare(`UPDATE conteudos SET ${fields.join(', ')} WHERE id = ?`).run(...values, req.params.id);
+    }
+    const row = db.prepare('SELECT * FROM conteudos WHERE id = ?').get(req.params.id);
+    if (!row) return res.status(404).json({ error: 'Not found' });
+    res.json({
+      ...row,
+      plataformas: (() => { try { return JSON.parse(row.plataformas || '[]'); } catch { return []; } })()
+    });
+  } catch (e) { res.status(400).json({ error: e.message }); }
+});
+
+app.delete('/api/conteudos/:id', (req, res) => {
+  const info = db.prepare('DELETE FROM conteudos WHERE id = ?').run(req.params.id);
+  if (info.changes === 0) return res.status(404).json({ error: 'Not found' });
+  res.json({ ok: true });
 });
 
 // ---------- Frontend estático (build do Vite) ----------

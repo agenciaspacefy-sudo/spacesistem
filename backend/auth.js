@@ -97,7 +97,7 @@ function findUserByGoogleId(googleId) {
   return db.prepare('SELECT * FROM usuarios WHERE google_id = ?').get(googleId);
 }
 
-const TRIAL_DAYS = 7;
+const TRIAL_DAYS = 14;
 
 function createUser({ nome, email, senha_hash = null, google_id = null, avatar = null }) {
   // Trial é configurado no momento da criação.

@@ -9,6 +9,7 @@ import {
 } from '@dnd-kit/core';
 import { api } from '../api/client.js';
 import { useConfirm } from '../ConfirmContext.jsx';
+import InviteFuncionarioModal from './InviteFuncionarioModal.jsx';
 
 // ---------- Paleta de cores disponíveis ----------
 const CORES = [
@@ -364,6 +365,7 @@ export default function Agenda() {
   const [clientes, setClientes] = useState([]);
   const [loading, setLoading] = useState(false);
   const [modal, setModal] = useState(null); // { evento? , inicio?, fim? }
+  const [inviteOpen, setInviteOpen] = useState(false);
 
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }));
 
@@ -723,6 +725,9 @@ export default function Agenda() {
               </button>
             ))}
           </div>
+          <button className="btn btn-ghost btn-sm" onClick={() => setInviteOpen(true)}>
+            👥 Convidar funcionário
+          </button>
           <button
             className="btn btn-primary btn-sm"
             onClick={() => {
@@ -736,6 +741,10 @@ export default function Agenda() {
           </button>
         </div>
       </div>
+
+      {inviteOpen && (
+        <InviteFuncionarioModal aba="agenda" onClose={() => setInviteOpen(false)} />
+      )}
 
       {loading ? (
         <div className="empty-state" style={{ marginTop: 24 }}>Carregando eventos…</div>

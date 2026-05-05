@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useSettings } from '../SettingsContext.jsx';
+import { api } from '../api/client.js';
+import { useConfirm } from '../ConfirmContext.jsx';
 
 const VARS = ['{nome_cliente}', '{valor}', '{vencimento}', '{chave_pix}'];
 
@@ -132,6 +134,105 @@ export default function Configuracoes() {
         </button>
         {savedFlash && <span className="config-saved-flash">✓ Salvo com sucesso</span>}
       </div>
+
+      <FuncionariosSection />
     </form>
+  );
+}
+
+// ---------- Seção: Funcionários convidados ----------
+const ABA_LABELS = { conteudo: 'Conteúdo', tarefas: 'Tarefas', agenda: 'Agenda', notas: 'Notas' };
+
+function FuncionariosSection() {
+  const confirm = useConfirm();
+  const [convites, setConvites] = useState([]);
+  const [loading, setLoading] = useState(false);
+
+  async function load() {
+    setLoading(true);
+    try { setConvites(await api.listConvites()); }
+    finally { setLoading(false); }
+  }
+  useEffect(() => { load(); }, []);
+
+  function statusOf(c) {
+    if (c.revogado_em) return { txt: 'Revogado',  cls: 'badge-neutral' };
+    if (c.aceito_em)   return { txt: 'Ativo',     cls: 'badge-pago' };
+    if (Date.parse(c.expires_at.replace(' ', 'T') + 'Z') < Date.now()) return { txt: 'Expirado', cls: 'badge-atrasado' };
+    return { txt: 'Pendente', cls: 'badge-pendente' };
+  }
+
+  async function revogar(c) {
+    const ok = await confirm({
+      message: <>Revogar acesso de <strong>{c.email}</strong>? O funcionário não poderá mais acessar o sistema.</>
+    });
+    if (!ok) return;
+    await api.revogarConvite(c.id);
+    load();
+  }
+
+  return (
+    <div className="config-funcionarios">
+      <div className="config-funcionarios-head">
+        <div>
+          <h3 className="config-funcionarios-title">Funcionários convidados</h3>
+          <p className="hint">Pessoas com acesso parcial ao sistema. Use o botão "Convidar funcionário" nas abas Conteúdo/Tarefas/Agenda/Notas.</p>
+        </div>
+      </div>
+
+      {loading && <div className="empty-state">Carregando…</div>}
+      {!loading && convites.length === 0 && (
+        <div className="empty-state">Nenhum convite enviado ainda.</div>
+      )}
+      {!loading && convites.length > 0 && (
+        <div className="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Nome</th>
+                <th>E-mail</th>
+                <th>Áreas</th>
+                <th style={{ width: 110 }}>Permissão</th>
+                <th style={{ width: 110 }}>Status</th>
+                <th style={{ width: 110 }}></th>
+              </tr>
+            </thead>
+            <tbody>
+              {convites.map((c) => {
+                const st = statusOf(c);
+                return (
+                  <tr key={c.id}>
+                    <td><div className="cell" style={{ fontWeight: 600 }}>{c.nome}</div></td>
+                    <td><div className="cell">{c.email}</div></td>
+                    <td>
+                      <div className="cell" style={{ fontSize: 12.5 }}>
+                        {(c.abas_acesso || []).map((a) => ABA_LABELS[a] || a).join(', ') || '—'}
+                      </div>
+                    </td>
+                    <td>
+                      <div className="cell">
+                        <span className="badge badge-neutral">
+                          {c.permissao === 'editar' ? 'Editar' : 'Visualizar'}
+                        </span>
+                      </div>
+                    </td>
+                    <td>
+                      <div className="cell"><span className={`badge ${st.cls}`}>{st.txt}</span></div>
+                    </td>
+                    <td className="actions-cell">
+                      {!c.revogado_em && (
+                        <button className="btn btn-sm btn-ghost btn-danger" onClick={() => revogar(c)}>
+                          Revogar
+                        </button>
+                      )}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
   );
 }

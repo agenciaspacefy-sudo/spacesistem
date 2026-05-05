@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { api } from '../api/client.js';
 import { useConfirm } from '../ConfirmContext.jsx';
+import InviteFuncionarioModal from './InviteFuncionarioModal.jsx';
 
 function formatData(iso) {
   if (!iso) return '';
@@ -32,6 +33,7 @@ export default function Notas() {
   const [editando, setEditando] = useState(null); // { id?, titulo, corpo }
   const [salvando, setSalvando] = useState(false);
   const [verConcluidas, setVerConcluidas] = useState(false);
+  const [inviteOpen, setInviteOpen] = useState(false);
   const saveTimeoutRef = useRef(null);
 
   async function load(q = '') {
@@ -175,10 +177,19 @@ export default function Notas() {
             {verConcluidas ? '← Voltar para ativas' : 'Ver concluídas'}
           </button>
           {!verConcluidas && (
-            <button className="btn btn-primary" onClick={abrirNova}>+ Nova nota</button>
+            <>
+              <button className="btn btn-ghost btn-sm" onClick={() => setInviteOpen(true)}>
+                👥 Convidar funcionário
+              </button>
+              <button className="btn btn-primary" onClick={abrirNova}>+ Nova nota</button>
+            </>
           )}
         </div>
       </div>
+
+      {inviteOpen && (
+        <InviteFuncionarioModal aba="notas" onClose={() => setInviteOpen(false)} />
+      )}
 
       {loading && <div className="empty-state">Carregando…</div>}
       {!loading && filtradas.length === 0 && (

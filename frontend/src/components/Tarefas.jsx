@@ -10,6 +10,7 @@ import {
 import { api } from '../api/client.js';
 import { formatDate, todayISO } from '../utils.js';
 import { useConfirm } from '../ConfirmContext.jsx';
+import InviteFuncionarioModal from './InviteFuncionarioModal.jsx';
 
 const COLUNAS = [
   { id: 'A Fazer', label: 'A Fazer' },
@@ -171,6 +172,7 @@ export default function Tarefas() {
   const [tarefas, setTarefas] = useState([]);
   const [clientes, setClientes] = useState([]);
   const [showForm, setShowForm] = useState(false);
+  const [inviteOpen, setInviteOpen] = useState(false);
   const [form, setForm] = useState(emptyForm());
   const [filterPrio, setFilterPrio] = useState('todas');
   const [filterData, setFilterData] = useState('todas');
@@ -316,11 +318,18 @@ export default function Tarefas() {
           </select>
         </div>
         <div className="toolbar-right">
+          <button className="btn btn-ghost btn-sm" onClick={() => setInviteOpen(true)}>
+            👥 Convidar funcionário
+          </button>
           <button className="btn btn-primary" onClick={() => setShowForm((s) => !s)}>
             {showForm ? 'Cancelar' : '+ Nova tarefa'}
           </button>
         </div>
       </div>
+
+      {inviteOpen && (
+        <InviteFuncionarioModal aba="tarefas" onClose={() => setInviteOpen(false)} />
+      )}
 
       {showForm && (
         <form className="form-row" onSubmit={handleCreate}>

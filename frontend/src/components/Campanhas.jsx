@@ -220,6 +220,37 @@ function CampanhaCard({ c, onOpen, onInvite, fmtBRL }) {
         </div>
       )}
 
+      {c.acesso_token && (
+        <div
+          className="campanha-card-link"
+          onClick={(e) => e.stopPropagation()}
+          title="Link público do relatório desta campanha"
+        >
+          <span className="campanha-card-link-icon">🔗</span>
+          <input
+            type="text"
+            readOnly
+            className="campanha-card-link-input"
+            value={`${window.location.origin}/campanha/${c.acesso_token}`}
+            onFocus={(e) => e.target.select()}
+            onClick={(e) => e.stopPropagation()}
+          />
+          <button
+            type="button"
+            className="campanha-card-link-copy"
+            onClick={(e) => {
+              e.stopPropagation();
+              const link = `${window.location.origin}/campanha/${c.acesso_token}`;
+              navigator.clipboard?.writeText(link).catch(() => window.prompt('Copie:', link));
+              e.currentTarget.textContent = '✓';
+              setTimeout(() => { try { e.currentTarget.textContent = 'Copiar'; } catch {} }, 1200);
+            }}
+          >
+            Copiar
+          </button>
+        </div>
+      )}
+
       <div className="campanha-card-footer">
         <RoasBadge roas={roas} />
         <span className={`badge badge-status-${c.status.toLowerCase()}`}>{c.status}</span>

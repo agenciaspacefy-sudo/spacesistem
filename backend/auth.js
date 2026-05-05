@@ -165,11 +165,16 @@ function computeBilling(u) {
 
 function publicUser(u) {
   if (!u) return null;
+  let abas = null;
+  try { abas = u.abas_acesso ? JSON.parse(u.abas_acesso) : null; } catch { abas = null; }
   return {
     id: u.id,
     nome: u.nome,
     email: u.email,
     avatar: u.avatar,
+    tipo_usuario: u.tipo_usuario || 'owner',
+    permissao: u.permissao || null,
+    abas_acesso: abas, // null = sem restrição
     billing: computeBilling(u)
   };
 }
@@ -267,6 +272,76 @@ router.post('/login', async (req, res) => {
 router.post('/logout', (req, res) => {
   clearAuthCookie(res);
   res.json({ ok: true });
+});
+
+// ---------- Convites de funcionário (acesso público) ----------
+// Lê info do convite pelo token (mostra ao usuário antes de aceitar)
+router.get('/convite/:token', (req, res) => {
+  try {
+    const conv = db.prepare(`
+      SELECT c.*, u.nome AS criador_nome, u.email AS criador_email
+      FROM convites c
+      LEFT JOIN usuarios u ON u.id = c.criado_por
+      WHERE c.token = ?
+    `).get(req.params.token);
+    if (!conv) return res.status(404).json({ error: 'Convite não encontrado' });
+    if (conv.aceito_em) return res.status(409).json({ error: 'Convite já aceito' });
+    if (conv.revogado_em) return res.status(410).json({ error: 'Convite revogado' });
+    if (Date.parse(conv.expires_at.replace(' ', 'T') + 'Z') < Date.now()) {
+      return res.status(410).json({ error: 'Convite expirado' });
+    }
+    let abas = [];
+    try { abas = JSON.parse(conv.abas_acesso || '[]'); } catch {}
+    res.json({
+      nome: conv.nome,
+      email: conv.email,
+      permissao: conv.permissao,
+      abas_acesso: abas,
+      expires_at: conv.expires_at,
+      criador_nome: conv.criador_nome || conv.criador_email
+    });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// Aceita o convite criando um usuário "funcionário" associado
+router.post('/convite/:token/aceitar', async (req, res) => {
+  try {
+    const conv = db.prepare('SELECT * FROM convites WHERE token = ?').get(req.params.token);
+    if (!conv) return res.status(404).json({ error: 'Convite não encontrado' });
+    if (conv.aceito_em) return res.status(409).json({ error: 'Convite já aceito' });
+    if (conv.revogado_em) return res.status(410).json({ error: 'Convite revogado' });
+    if (Date.parse(conv.expires_at.replace(' ', 'T') + 'Z') < Date.now()) {
+      return res.status(410).json({ error: 'Convite expirado' });
+    }
+
+    const { senha } = req.body || {};
+    if (!senha || senha.length < 6) {
+      return res.status(400).json({ error: 'Defina uma senha de pelo menos 6 caracteres' });
+    }
+    if (findUserByEmail(conv.email)) {
+      return res.status(409).json({ error: 'Já existe uma conta com este e-mail' });
+    }
+
+    const senha_hash = await bcrypt.hash(senha, 10);
+    const info = db.prepare(`
+      INSERT INTO usuarios
+        (nome, email, senha_hash, tipo_usuario, permissao, abas_acesso,
+         convidado_por, plano, assinatura_ativa, trial_inicio, trial_fim)
+      VALUES (?, ?, ?, 'funcionario', ?, ?, ?, 'mensal', 1,
+        datetime('now'), datetime('now', '+365 days'))
+    `).run(
+      conv.nome, conv.email, senha_hash,
+      conv.permissao, conv.abas_acesso,
+      conv.criado_por
+    );
+
+    db.prepare("UPDATE convites SET aceito_em = datetime('now') WHERE id = ?").run(conv.id);
+
+    const user = findUserById(info.lastInsertRowid);
+    const token = signToken(user);
+    setAuthCookie(res, token);
+    res.json({ user: publicUser(user) });
+  } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 router.get('/me', (req, res) => {

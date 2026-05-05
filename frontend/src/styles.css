@@ -129,12 +129,8 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 /* ---------- FONTE GLOBAL INTER ----------
-   Garante que TODOS os elementos (inputs, selects, textareas, botões,
-   tabelas, badges, modais, tooltips, datas, números, valores, labels,
-   placeholders, títulos, SVG text dos gráficos etc.) usam Inter.
-   Aplica também na página pública de relatório.
-   Uso de !important para sobrepor font-family específicos de
-   componentes legados sem precisar caçar cada override. */
+   Inter padrão Claude — pesos 300-700 importados via Google Fonts no index.html.
+   !important sobrepõe font-family de bibliotecas e componentes legados. */
 *,
 *::before,
 *::after,
@@ -146,16 +142,52 @@ table,
 th,
 td,
 label,
+small,
+strong,
+em,
+code,
+pre,
 svg text,
 ::placeholder {
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif !important;
+}
+
+body {
+  font-size: 14px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  font-feature-settings: 'cv11', 'ss01';
+}
+
+/* Números e valores monetários sempre tabulares */
+.mono,
+.card-value,
+.metric-value,
+input[type="number"],
+input[type="date"],
+input[type="datetime-local"],
+input[type="month"],
+input[type="time"],
+.cell.mono,
+.brl,
+[data-numeric="true"] {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: 'tnum';
 }
 
 .label, th, .card-label, .tab {
   font-weight: 500;
 }
 
-.card-value, .spacefy-title {
+/* Letter-spacing -0.01em em títulos, normal no corpo */
+h1, h2, h3, h4, h5, h6,
+.card-value,
+.spacefy-title,
+.modal-title,
+.chart-title,
+.topbar-title,
+.dashboard-section-title {
   letter-spacing: -0.01em;
 }
 
@@ -6102,6 +6134,427 @@ input[type="time"] {
   .orbit, .moon-orbit, .sun-rays, .planet.sun, .sun-glow {
     animation: none !important;
   }
+}
+
+/* =========================================================
+   Convite de funcionário — modal + página pública
+   ========================================================= */
+.invite-abas-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px;
+}
+.invite-aba-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--bg-3);
+  border: 1px solid var(--border);
+  color: var(--text);
+  padding: 9px 12px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 500;
+  font-family: inherit;
+  cursor: pointer;
+  transition: border-color 0.12s, background 0.12s;
+}
+.invite-aba-btn:hover { border-color: var(--border-strong); }
+.invite-aba-btn.is-active {
+  background: var(--accent-soft);
+  color: var(--accent);
+  border-color: var(--accent);
+  font-weight: 600;
+}
+.invite-aba-check {
+  width: 18px;
+  height: 18px;
+  border-radius: 5px;
+  border: 1.5px solid var(--border-strong);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg-2);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+}
+.invite-aba-btn.is-active .invite-aba-check {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+
+/* Página /convite/:token */
+.invite-page {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  background:
+    radial-gradient(1200px 600px at 10% 0%, var(--accent-soft) 0%, transparent 60%),
+    var(--bg);
+  padding: 24px;
+}
+.invite-card {
+  width: 100%;
+  max-width: 460px;
+  background: var(--bg-2);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 32px 30px;
+  box-shadow: var(--shadow-lg);
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.invite-logo {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 6px;
+}
+.invite-title {
+  margin: 0;
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--text);
+  letter-spacing: -0.3px;
+}
+.invite-sub {
+  margin: -4px 0 8px;
+  color: var(--text-dim);
+  font-size: 14px;
+  line-height: 1.5;
+}
+.invite-info-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px 16px;
+  background: var(--bg-3);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 12px 14px;
+}
+.invite-info-grid > div {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.invite-info-label {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--text-dim);
+  font-weight: 600;
+}
+.invite-info-value {
+  font-size: 13.5px;
+  color: var(--text);
+  font-weight: 500;
+  word-break: break-word;
+}
+.invite-btn { margin-top: 6px; }
+.invite-foot {
+  font-size: 11.5px;
+  color: var(--text-dim);
+  text-align: center;
+  margin: 4px 0 0;
+}
+.invite-msg { color: var(--text-dim); }
+
+/* =========================================================
+   Configurações — Funcionários section
+   ========================================================= */
+.config-funcionarios {
+  margin-top: 24px;
+  padding-top: 20px;
+  border-top: 1px solid var(--border);
+}
+.config-funcionarios-head { margin-bottom: 12px; }
+.config-funcionarios-title {
+  margin: 0 0 4px;
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text);
+  letter-spacing: -0.1px;
+}
+
+/* =========================================================
+   Campanha — link público dentro do card
+   ========================================================= */
+.campanha-card-link {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--bg-3);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 4px 6px 4px 10px;
+  margin-top: 8px;
+  font-size: 11.5px;
+  cursor: default;
+}
+.campanha-card-link-icon {
+  flex-shrink: 0;
+  font-size: 13px;
+}
+.campanha-card-link-input {
+  flex: 1;
+  background: transparent;
+  border: 0;
+  color: var(--text-dim);
+  font-size: 11.5px;
+  outline: none;
+  font-family: inherit;
+  text-overflow: ellipsis;
+  min-width: 0;
+}
+.campanha-card-link-copy {
+  background: var(--accent);
+  color: #fff;
+  border: 0;
+  padding: 4px 10px;
+  border-radius: 5px;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
+  transition: filter 0.1s;
+  min-width: 56px;
+}
+.campanha-card-link-copy:hover { filter: brightness(1.08); }
+
+/* =========================================================
+   RelatorioPublico / CampanhaPublica — mobile-first overrides
+   ========================================================= */
+.relatorio-publico,
+.relatorio-publico * {
+  font-size: 16px; /* base mobile-friendly */
+}
+.relatorio-publico {
+  -webkit-text-size-adjust: 100%;
+  overflow-x: hidden;
+}
+
+@media (max-width: 480px) {
+  .rp-header-inner {
+    padding: 0 16px;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+  .rp-main {
+    padding: 18px 14px 28px;
+    gap: 18px;
+  }
+  .rp-title { font-size: 22px; line-height: 1.2; }
+  .rp-cards {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 10px;
+  }
+  .rp-card {
+    padding: 14px;
+    min-height: 92px;
+  }
+  .rp-card-value { font-size: 18px !important; }
+  .rp-card-label { font-size: 11.5px !important; }
+  .rp-table thead th,
+  .rp-table tbody td { padding: 10px 8px; font-size: 13px; }
+  .rp-table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  .rp-pill { font-size: 12px; padding: 3px 8px; }
+  /* Botões touch-friendly */
+  .rp-footer button,
+  .rp-main button {
+    min-height: 44px;
+  }
+}
+
+/* =========================================================
+   Mapa Mental — listagem + editor + nodes React Flow
+   ========================================================= */
+.mapas-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 16px;
+}
+.mapa-card {
+  background: var(--bg-2);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  overflow: hidden;
+  transition: border-color 0.15s, transform 0.1s, box-shadow 0.15s;
+  display: flex;
+  flex-direction: column;
+}
+.mapa-card:hover {
+  border-color: var(--accent);
+  transform: translateY(-1px);
+  box-shadow: 0 8px 18px rgba(0, 0, 0, 0.08);
+}
+.mapa-card-thumb {
+  background: var(--bg-3);
+  border: 0;
+  cursor: pointer;
+  width: 100%;
+  height: 130px;
+  padding: 0;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.mapa-card-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.mapa-card-placeholder {
+  font-size: 38px;
+  opacity: 0.55;
+}
+.mapa-card-body { padding: 12px 14px 14px; display: flex; flex-direction: column; gap: 4px; }
+.mapa-card-name {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text);
+  letter-spacing: -0.1px;
+}
+.mapa-card-meta {
+  font-size: 11.5px;
+  color: var(--text-dim);
+}
+.mapa-card-actions {
+  display: flex;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+/* Editor */
+.mapa-editor {
+  display: flex;
+  flex-direction: column;
+  height: calc(100vh - 90px);
+  min-height: 480px;
+  margin: -20px -20px -20px;
+}
+.mapa-editor-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 18px;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg-2);
+  flex-wrap: wrap;
+}
+.mapa-editor-tb-left { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.mapa-editor-tb-right { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.mapa-editor-title {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--text);
+  letter-spacing: -0.2px;
+}
+.mapa-editor-status {
+  font-size: 12px;
+  color: var(--text-dim);
+  font-style: italic;
+}
+
+.mapa-tipo-pills {
+  display: inline-flex;
+  background: var(--bg-3);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 3px;
+  gap: 2px;
+}
+.mapa-tipo-pill {
+  background: transparent;
+  border: 1px solid transparent;
+  padding: 5px 10px;
+  border-radius: 6px;
+  font-size: 11.5px;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
+  transition: background 0.12s;
+}
+.mapa-tipo-pill:hover { background: var(--row-hover); }
+
+.mapa-editor-canvas {
+  flex: 1;
+  position: relative;
+  background: var(--bg-3);
+}
+
+/* Nodes customizados */
+.mapa-node {
+  background: var(--bg-2);
+  border: 2px solid #1B6FEE;
+  border-radius: 10px;
+  padding: 8px 14px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #1B6FEE;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 90px;
+  font-family: inherit;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+  transition: box-shadow 0.15s, transform 0.1s;
+}
+.mapa-node.is-selected {
+  box-shadow: 0 0 0 3px rgba(27, 111, 238, 0.25);
+}
+.mapa-node-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.mapa-node-label { line-height: 1.3; }
+
+/* Override do React Flow para combinar com o tema */
+.react-flow__attribution { display: none !important; }
+.react-flow__handle {
+  width: 8px !important;
+  height: 8px !important;
+  background: #1B6FEE !important;
+  border: 1.5px solid var(--bg-2) !important;
+}
+.react-flow__edge-path {
+  stroke: var(--text-dim);
+  stroke-width: 1.6;
+}
+.react-flow__edge.selected .react-flow__edge-path {
+  stroke: var(--accent);
+  stroke-width: 2.2;
+}
+.react-flow__minimap {
+  background: var(--bg-2) !important;
+  border: 1px solid var(--border) !important;
+  border-radius: 8px;
+  overflow: hidden;
+}
+.react-flow__controls {
+  background: var(--bg-2) !important;
+  border: 1px solid var(--border) !important;
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: var(--shadow-sm);
+}
+.react-flow__controls-button {
+  background: var(--bg-2) !important;
+  border-bottom: 1px solid var(--border) !important;
+  color: var(--text) !important;
+  fill: var(--text) !important;
+}
+.react-flow__controls-button:hover {
+  background: var(--bg-3) !important;
 }
 
 

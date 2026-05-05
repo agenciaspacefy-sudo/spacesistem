@@ -654,6 +654,9 @@ app.post('/api/campanhas', (req, res) => {
     const info = db
       .prepare(`INSERT INTO campanhas (${CAMP_FIELDS.join(', ')}) VALUES (${CAMP_FIELDS.map(() => '?').join(', ')})`)
       .run(...CAMP_FIELDS.map((f) => (req.body[f] === undefined ? null : req.body[f])));
+    // Gera automaticamente um token público pra acompanhar resultados
+    const token = crypto.randomUUID();
+    db.prepare('UPDATE campanhas SET acesso_token = ? WHERE id = ?').run(token, info.lastInsertRowid);
     const row = db.prepare(`${CAMP_SELECT} WHERE c.id = ?`).get(info.lastInsertRowid);
     res.status(201).json(row);
   } catch (e) { res.status(400).json({ error: e.message }); }
@@ -877,6 +880,139 @@ app.get('/api/resumo', (req, res) => {
     .sort((a, b) => b.mes.localeCompare(a.mes));
 
   res.json(resumo);
+});
+
+// ---------- CONVITES DE FUNCIONÁRIO ----------
+app.get('/api/convites', (req, res) => {
+  const rows = db.prepare(`
+    SELECT id, token, nome, email, permissao, abas_acesso,
+           expires_at, aceito_em, revogado_em, created_at
+    FROM convites
+    ORDER BY created_at DESC
+  `).all();
+  res.json(rows.map((r) => ({
+    ...r,
+    abas_acesso: (() => { try { return JSON.parse(r.abas_acesso || '[]'); } catch { return []; } })()
+  })));
+});
+
+app.post('/api/convites', (req, res) => {
+  try {
+    const { nome, email, permissao, abas_acesso } = req.body || {};
+    if (!nome || !email) return res.status(400).json({ error: 'Nome e e-mail são obrigatórios' });
+    const abas = Array.isArray(abas_acesso) ? abas_acesso : [];
+    const token = crypto.randomUUID();
+    const info = db.prepare(`
+      INSERT INTO convites (token, nome, email, permissao, abas_acesso, expires_at, criado_por)
+      VALUES (?, ?, ?, ?, ?, datetime('now', '+7 days'), ?)
+    `).run(
+      token,
+      String(nome).trim(),
+      String(email).trim().toLowerCase(),
+      permissao === 'editar' ? 'editar' : 'visualizar',
+      JSON.stringify(abas),
+      req.user?.id || null
+    );
+    const row = db.prepare('SELECT * FROM convites WHERE id = ?').get(info.lastInsertRowid);
+    res.status(201).json({
+      ...row,
+      abas_acesso: abas
+    });
+  } catch (e) { res.status(400).json({ error: e.message }); }
+});
+
+app.delete('/api/convites/:id', (req, res) => {
+  try {
+    db.prepare("UPDATE convites SET revogado_em = datetime('now') WHERE id = ?").run(req.params.id);
+    // Se já existe usuário criado por este convite, revoga também
+    const conv = db.prepare('SELECT email FROM convites WHERE id = ?').get(req.params.id);
+    if (conv?.email) {
+      db.prepare(`
+        UPDATE usuarios SET assinatura_ativa = 0, plano = 'expirado'
+        WHERE LOWER(email) = LOWER(?) AND tipo_usuario = 'funcionario'
+      `).run(conv.email);
+    }
+    res.json({ ok: true });
+  } catch (e) { res.status(400).json({ error: e.message }); }
+});
+
+// ---------- MAPAS MENTAIS ----------
+app.get('/api/mapas', (req, res) => {
+  const { cliente_id } = req.query;
+  let sql = `
+    SELECT m.id, m.cliente_id, m.nome, m.thumbnail, m.created_at, m.updated_at,
+           cl.nome AS cliente_nome
+    FROM mapas_mentais m
+    LEFT JOIN clientes cl ON cl.id = m.cliente_id
+  `;
+  const params = [];
+  if (cliente_id) {
+    sql += ' WHERE m.cliente_id = ?';
+    params.push(Number(cliente_id));
+  }
+  sql += ' ORDER BY m.updated_at DESC';
+  res.json(db.prepare(sql).all(...params));
+});
+
+app.get('/api/mapas/:id', (req, res) => {
+  const row = db.prepare(`
+    SELECT m.*, cl.nome AS cliente_nome
+    FROM mapas_mentais m
+    LEFT JOIN clientes cl ON cl.id = m.cliente_id
+    WHERE m.id = ?
+  `).get(req.params.id);
+  if (!row) return res.status(404).json({ error: 'Não encontrado' });
+  let data = {};
+  try { data = JSON.parse(row.data_json || '{}'); } catch {}
+  res.json({ ...row, data: data });
+});
+
+app.post('/api/mapas', (req, res) => {
+  try {
+    const { cliente_id, nome, data, thumbnail } = req.body || {};
+    if (!nome) return res.status(400).json({ error: 'Nome obrigatório' });
+    const info = db.prepare(`
+      INSERT INTO mapas_mentais (cliente_id, nome, data_json, thumbnail)
+      VALUES (?, ?, ?, ?)
+    `).run(
+      cliente_id ? Number(cliente_id) : null,
+      String(nome),
+      JSON.stringify(data || {}),
+      thumbnail || null
+    );
+    const row = db.prepare('SELECT * FROM mapas_mentais WHERE id = ?').get(info.lastInsertRowid);
+    res.status(201).json({
+      ...row,
+      data: data || {}
+    });
+  } catch (e) { res.status(400).json({ error: e.message }); }
+});
+
+app.put('/api/mapas/:id', (req, res) => {
+  try {
+    const fields = [];
+    const values = [];
+    const b = req.body || {};
+    if (b.nome !== undefined) { fields.push('nome = ?'); values.push(String(b.nome)); }
+    if (b.cliente_id !== undefined) { fields.push('cliente_id = ?'); values.push(b.cliente_id ? Number(b.cliente_id) : null); }
+    if (b.data !== undefined) { fields.push('data_json = ?'); values.push(JSON.stringify(b.data)); }
+    if (b.thumbnail !== undefined) { fields.push('thumbnail = ?'); values.push(b.thumbnail || null); }
+    if (fields.length > 0) {
+      fields.push("updated_at = datetime('now')");
+      db.prepare(`UPDATE mapas_mentais SET ${fields.join(', ')} WHERE id = ?`).run(...values, req.params.id);
+    }
+    const row = db.prepare('SELECT * FROM mapas_mentais WHERE id = ?').get(req.params.id);
+    if (!row) return res.status(404).json({ error: 'Not found' });
+    let data = {};
+    try { data = JSON.parse(row.data_json || '{}'); } catch {}
+    res.json({ ...row, data });
+  } catch (e) { res.status(400).json({ error: e.message }); }
+});
+
+app.delete('/api/mapas/:id', (req, res) => {
+  const info = db.prepare('DELETE FROM mapas_mentais WHERE id = ?').run(req.params.id);
+  if (info.changes === 0) return res.status(404).json({ error: 'Not found' });
+  res.json({ ok: true });
 });
 
 // ---------- CONTEÚDOS (calendário editorial) ----------

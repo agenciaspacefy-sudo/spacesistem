@@ -124,14 +124,13 @@ export default function Clientes() {
               <th style={{ width: 200 }}>CNPJ</th>
               <th style={{ width: 180 }}>WhatsApp</th>
               <th style={{ width: 120 }}>Ativo</th>
-              <th style={{ width: 160 }}>Relatório</th>
               <th style={{ width: 80 }}></th>
             </tr>
           </thead>
           <tbody>
-            {loading && <tr><td colSpan={6}><div className="empty-state">Carregando…</div></td></tr>}
+            {loading && <tr><td colSpan={5}><div className="empty-state">Carregando…</div></td></tr>}
             {!loading && rows.length === 0 && (
-              <tr><td colSpan={6}><div className="empty-state">Nenhum cliente cadastrado ainda.</div></td></tr>
+              <tr><td colSpan={5}><div className="empty-state">Nenhum cliente cadastrado ainda.</div></td></tr>
             )}
             {!loading && rows.map((r) => (
               <tr key={r.id}>
@@ -178,17 +177,6 @@ export default function Clientes() {
                         {r.ativo ? 'Ativo' : 'Inativo'}
                       </span>
                     </label>
-                  </div>
-                </td>
-                <td>
-                  <div className="cell">
-                    <button
-                      className={`btn btn-sm ${r.relatorio_token ? 'btn-ghost' : 'btn-primary'}`}
-                      onClick={() => setLinkCliente(r)}
-                      title={r.relatorio_token ? 'Ver/copiar link' : 'Gerar link de relatório'}
-                    >
-                      {r.relatorio_token ? 'Ver link' : 'Gerar link'}
-                    </button>
                   </div>
                 </td>
                 <td className="actions-cell">

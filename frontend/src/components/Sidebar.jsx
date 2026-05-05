@@ -75,6 +75,18 @@ function IconAgenda() {
     </Icon>
   );
 }
+function IconMapa() {
+  // Diagrama de mapa mental (3 círculos com linhas)
+  return (
+    <Icon>
+      <circle cx="12" cy="5" r="2.5" />
+      <circle cx="5" cy="19" r="2.5" />
+      <circle cx="19" cy="19" r="2.5" />
+      <line x1="12" y1="7.5" x2="6.5" y2="16.5" />
+      <line x1="12" y1="7.5" x2="17.5" y2="16.5" />
+    </Icon>
+  );
+}
 function IconConteudo() {
   // Calendário com check (calendário editorial)
   return (
@@ -178,6 +190,7 @@ const NAV_ITEMS = [
   { id: 'cobrancas',   label: 'Cobranças',     Icon: IconCobrancas },
   { id: 'campanhas',   label: 'Campanhas',     Icon: IconCampanhas },
   { id: 'conteudo',    label: 'Conteúdo',      Icon: IconConteudo },
+  { id: 'mapa',        label: 'Mapa Mental',   Icon: IconMapa },
   { id: 'tarefas',     label: 'Tarefas',       Icon: IconTarefas },
   { id: 'agenda',      label: 'Agenda',        Icon: IconAgenda },
   { id: 'notas',       label: 'Notas',         Icon: IconNotas }
@@ -188,6 +201,14 @@ export default function Sidebar({ tab, onTab, theme, onToggleTheme, mobileOpen, 
   const { user, logout } = useAuth();
   const [expanded, setExpanded] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
+
+  // Funcionário tem abas_acesso restritas; owner ve tudo (abas_acesso = null/[])
+  const abasPermitidas = Array.isArray(user?.abas_acesso) && user.abas_acesso.length > 0
+    ? new Set(user.abas_acesso)
+    : null;
+  const navItensVisiveis = abasPermitidas
+    ? NAV_ITEMS.filter((it) => abasPermitidas.has(it.id))
+    : NAV_ITEMS;
 
   // Fecha o menu mobile ao trocar de aba
   useEffect(() => {
@@ -225,7 +246,7 @@ export default function Sidebar({ tab, onTab, theme, onToggleTheme, mobileOpen, 
 
         {/* --- Navegação principal --- */}
         <nav className="sidebar-nav">
-          {NAV_ITEMS.map(({ id, label, Icon: ItemIcon }) => (
+          {navItensVisiveis.map(({ id, label, Icon: ItemIcon }) => (
             <button
               key={id}
               type="button"
@@ -242,42 +263,31 @@ export default function Sidebar({ tab, onTab, theme, onToggleTheme, mobileOpen, 
 
         {/* --- Rodapé: config, tema, avatar, logout --- */}
         <div className="sidebar-footer">
-          <button
-            type="button"
-            className={`sidebar-item ${tab === 'config' ? 'active' : ''}`}
-            onClick={() => handleNav('config')}
-            title={expanded ? undefined : 'Configurações'}
-            data-tooltip="Configurações"
-          >
-            <span className="sidebar-item-icon"><IconGear /></span>
-            <span className="sidebar-item-label">Configurações</span>
-          </button>
+          {!abasPermitidas && (
+            <>
+              <button
+                type="button"
+                className={`sidebar-item ${tab === 'config' ? 'active' : ''}`}
+                onClick={() => handleNav('config')}
+                title={expanded ? undefined : 'Configurações'}
+                data-tooltip="Configurações"
+              >
+                <span className="sidebar-item-icon"><IconGear /></span>
+                <span className="sidebar-item-label">Configurações</span>
+              </button>
 
-          <button
-            type="button"
-            className={`sidebar-item ${tab === 'planos' ? 'active' : ''}`}
-            onClick={() => handleNav('planos')}
-            title={expanded ? undefined : 'Planos'}
-            data-tooltip="Planos"
-          >
-            <span className="sidebar-item-icon"><IconPlanos /></span>
-            <span className="sidebar-item-label">Planos</span>
-          </button>
-
-          <button
-            type="button"
-            className="sidebar-item"
-            onClick={onToggleTheme}
-            title={expanded ? undefined : (theme === 'dark' ? 'Tema claro' : 'Tema escuro')}
-            data-tooltip={theme === 'dark' ? 'Tema claro' : 'Tema escuro'}
-          >
-            <span className="sidebar-item-icon">
-              {theme === 'dark' ? <IconSun /> : <IconMoon />}
-            </span>
-            <span className="sidebar-item-label">
-              {theme === 'dark' ? 'Tema claro' : 'Tema escuro'}
-            </span>
-          </button>
+              <button
+                type="button"
+                className={`sidebar-item ${tab === 'planos' ? 'active' : ''}`}
+                onClick={() => handleNav('planos')}
+                title={expanded ? undefined : 'Planos'}
+                data-tooltip="Planos"
+              >
+                <span className="sidebar-item-icon"><IconPlanos /></span>
+                <span className="sidebar-item-label">Planos</span>
+              </button>
+            </>
+          )}
 
           {user && (
             <button

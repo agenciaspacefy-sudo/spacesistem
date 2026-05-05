@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { api } from '../api/client.js';
 import { useConfirm } from '../ConfirmContext.jsx';
+import InviteFuncionarioModal from './InviteFuncionarioModal.jsx';
 
 // ---------- Plataformas ----------
 export const PLATAFORMAS_CONTEUDO = [
@@ -115,6 +116,7 @@ export default function Conteudo() {
   const [editando, setEditando] = useState(null); // { ...form } | { date: ... }
   const [fCliente, setFCliente] = useState('');
   const [fPlataforma, setFPlataforma] = useState('');
+  const [inviteOpen, setInviteOpen] = useState(false);
 
   async function load() {
     setLoading(true);
@@ -270,9 +272,16 @@ export default function Conteudo() {
               <option key={p.id} value={p.id}>{p.nome}</option>
             ))}
           </select>
+          <button className="btn btn-ghost btn-sm" onClick={() => setInviteOpen(true)}>
+            👥 Convidar funcionário
+          </button>
           <button className="btn btn-primary" onClick={() => abrirNovo()}>+ Novo conteúdo</button>
         </div>
       </div>
+
+      {inviteOpen && (
+        <InviteFuncionarioModal aba="conteudo" onClose={() => setInviteOpen(false)} />
+      )}
 
       <div className="conteudo-grid">
         <div className="conteudo-grid-header">

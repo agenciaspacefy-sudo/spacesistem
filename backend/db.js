@@ -1,4 +1,5 @@
 import { DatabaseSync } from 'node:sqlite';
+import { randomUUID } from 'node:crypto';
 import { fileURLToPath } from 'url';
 import path from 'path';
 import fs from 'fs';
@@ -202,6 +203,16 @@ try {
 // ---------- Migrações de campanha pública + conteúdo ----------
 try { db.exec('ALTER TABLE campanhas ADD COLUMN acesso_token TEXT'); } catch {}
 try { db.exec('ALTER TABLE campanhas ADD COLUMN acesso_email TEXT'); } catch {}
+// Backfill: campanhas existentes ganham token automaticamente
+try {
+  const semToken = db.prepare('SELECT id FROM campanhas WHERE acesso_token IS NULL OR acesso_token = ""').all();
+  const upd = db.prepare('UPDATE campanhas SET acesso_token = ? WHERE id = ?');
+  for (const c of semToken) upd.run(randomUUID(), c.id);
+} catch {}
+try { db.exec('ALTER TABLE usuarios ADD COLUMN abas_acesso TEXT'); } catch {} // JSON array; null = todas
+try { db.exec("ALTER TABLE usuarios ADD COLUMN tipo_usuario TEXT DEFAULT 'owner'"); } catch {} // owner | funcionario
+try { db.exec('ALTER TABLE usuarios ADD COLUMN permissao TEXT'); } catch {} // visualizar | editar (apenas funcionario)
+try { db.exec('ALTER TABLE usuarios ADD COLUMN convidado_por INTEGER'); } catch {}
 
 // Tabela para histórico de ROAS por campanha (snapshots mensais)
 db.exec(`
@@ -216,6 +227,40 @@ db.exec(`
     UNIQUE(campanha_id, ano_mes),
     FOREIGN KEY (campanha_id) REFERENCES campanhas(id) ON DELETE CASCADE
   );
+`);
+
+// Tabela de convites de funcionário
+db.exec(`
+  CREATE TABLE IF NOT EXISTS convites (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    token TEXT NOT NULL UNIQUE,
+    nome TEXT NOT NULL,
+    email TEXT NOT NULL,
+    permissao TEXT NOT NULL DEFAULT 'visualizar',
+    abas_acesso TEXT NOT NULL DEFAULT '[]',
+    expires_at TEXT NOT NULL,
+    aceito_em TEXT,
+    revogado_em TEXT,
+    criado_por INTEGER,
+    created_at TEXT DEFAULT (datetime('now'))
+  );
+  CREATE INDEX IF NOT EXISTS idx_convite_token ON convites(token);
+  CREATE INDEX IF NOT EXISTS idx_convite_email ON convites(email);
+`);
+
+// Tabela de mapas mentais
+db.exec(`
+  CREATE TABLE IF NOT EXISTS mapas_mentais (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    cliente_id INTEGER,
+    nome TEXT NOT NULL,
+    data_json TEXT NOT NULL DEFAULT '{}',
+    thumbnail TEXT,
+    created_at TEXT DEFAULT (datetime('now')),
+    updated_at TEXT DEFAULT (datetime('now')),
+    FOREIGN KEY (cliente_id) REFERENCES clientes(id) ON DELETE SET NULL
+  );
+  CREATE INDEX IF NOT EXISTS idx_mapa_cliente ON mapas_mentais(cliente_id);
 `);
 
 // Tabela de conteúdos (calendário editorial)

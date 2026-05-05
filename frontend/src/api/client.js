@@ -71,7 +71,13 @@ export const auth = {
   login: (email, senha) => request('/auth/login', { method: 'POST', body: JSON.stringify({ email, senha }) }),
   register: (data) => request('/auth/register', { method: 'POST', body: JSON.stringify(data) }),
   logout: () => request('/auth/logout', { method: 'POST' }),
-  updateProfile: (data) => request('/auth/me', { method: 'PUT', body: JSON.stringify(data) })
+  updateProfile: (data) => request('/auth/me', { method: 'PUT', body: JSON.stringify(data) }),
+  conviteInfo: (token) => request(`/auth/convite/${encodeURIComponent(token)}`),
+  conviteAceitar: (token, senha) =>
+    request(`/auth/convite/${encodeURIComponent(token)}/aceitar`, {
+      method: 'POST',
+      body: JSON.stringify({ senha })
+    })
 };
 
 export const api = {
@@ -176,6 +182,18 @@ export const api = {
   createConteudo: (data) => request(`${API}/conteudos`, { method: 'POST', body: JSON.stringify(data) }),
   updateConteudo: (id, data) => request(`${API}/conteudos/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
   deleteConteudo: (id) => request(`${API}/conteudos/${id}`, { method: 'DELETE' }),
+
+  // Convites de funcionário
+  listConvites: () => request(`${API}/convites`),
+  createConvite: (data) => request(`${API}/convites`, { method: 'POST', body: JSON.stringify(data) }),
+  revogarConvite: (id) => request(`${API}/convites/${id}`, { method: 'DELETE' }),
+
+  // Mapas mentais
+  listMapas: (cliente_id) => request(`${API}/mapas${cliente_id ? '?cliente_id=' + cliente_id : ''}`),
+  getMapa: (id) => request(`${API}/mapas/${id}`),
+  createMapa: (data) => request(`${API}/mapas`, { method: 'POST', body: JSON.stringify(data) }),
+  updateMapa: (id, data) => request(`${API}/mapas/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+  deleteMapa: (id) => request(`${API}/mapas/${id}`, { method: 'DELETE' }),
 
   // Reuniões de campanha
   listReunioes: (campanhaId) => request(`${API}/campanhas/${campanhaId}/reunioes`),

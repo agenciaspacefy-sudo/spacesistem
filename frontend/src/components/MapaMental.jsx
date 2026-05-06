@@ -33,6 +33,36 @@ function nextId() {
   return `n_${Date.now().toString(36)}_${(_idSeed++).toString(36)}`;
 }
 
+// Chave canônica por par de nós (independente da direção) — usada para
+// deduplicar conexões. Garante que A->B e B->A são tratadas como o mesmo par.
+function edgePairKey(source, target) {
+  return source < target ? `${source}|${target}` : `${target}|${source}`;
+}
+
+// Remove arestas duplicadas mantendo apenas a primeira ocorrência por par.
+function dedupeEdges(edges) {
+  const seen = new Set();
+  const out = [];
+  for (const e of (edges || [])) {
+    if (!e?.source || !e?.target) continue;
+    if (e.source === e.target) continue; // ignora self-loops
+    const key = edgePairKey(e.source, e.target);
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push(e);
+  }
+  return out;
+}
+
+// Garante o estilo padrão (smoothstep + animated) em arestas vindas do banco
+function normalizeEdge(e) {
+  return {
+    ...e,
+    type: e?.type || 'smoothstep',
+    animated: e?.animated !== false
+  };
+}
+
 function makeNode({ id, x, y, label, tipo = 'estrategia' }) {
   const t = TIPO_BY_ID[tipo] || TIPO_BY_ID.estrategia;
   return {
@@ -325,6 +355,7 @@ function MapaEditor({ mapaId, onClose }) {
   const [tipoAtual, setTipoAtual] = useState('estrategia');
   const [salvando, setSalvando] = useState(false);
   const [exporting, setExporting] = useState(false);
+  const [edgeMenu, setEdgeMenu] = useState(null); // { x, y, edgeId } | null
   const rf = useReactFlow();
   const initialLoaded = useRef(false);
   const connectingFromRef = useRef(null); // nodeId do qual o usuário está puxando uma conexão
@@ -364,7 +395,9 @@ function MapaEditor({ mapaId, onClose }) {
         setMapa(m);
         const data = m.data || {};
         setNodes(data.nodes || []);
-        setEdges(data.edges || []);
+        // Normaliza tipo + animacao e remove duplicatas que existam no banco
+        const edgesLimpo = dedupeEdges((data.edges || []).map(normalizeEdge));
+        setEdges(edgesLimpo);
         initialLoaded.current = true;
       } catch (e) {
         toast?.error('Falha ao abrir: ' + (e?.message || e));
@@ -382,7 +415,8 @@ function MapaEditor({ mapaId, onClose }) {
     saveRef.current = setTimeout(async () => {
       setSalvando(true);
       try {
-        await api.updateMapa(mapaId, { data: { nodes, edges } });
+        // Sempre persiste sem duplicatas (uma conexao por par de nos)
+        await api.updateMapa(mapaId, { data: { nodes, edges: dedupeEdges(edges) } });
       } catch (e) {
         toast?.error('Falha ao salvar: ' + (e?.message || e));
       } finally { setSalvando(false); }
@@ -394,8 +428,49 @@ function MapaEditor({ mapaId, onClose }) {
   const onNodesChange = useCallback((changes) => setNodes((nds) => applyNodeChanges(changes, nds)), []);
   const onEdgesChange = useCallback((changes) => setEdges((eds) => applyEdgeChanges(changes, eds)), []);
 
+  // Botao direito em uma edge abre menu contextual interno
+  const onEdgeContextMenu = useCallback((event, edge) => {
+    event.preventDefault();
+    event.stopPropagation();
+    setEdgeMenu({
+      x: event.clientX,
+      y: event.clientY,
+      edgeId: edge.id
+    });
+  }, []);
+
+  function deletarEdge(edgeId) {
+    setEdges((eds) => eds.filter((e) => e.id !== edgeId));
+    setEdgeMenu(null);
+  }
+
+  // Fecha o menu contextual com clique fora ou Escape
+  useEffect(() => {
+    if (!edgeMenu) return;
+    function onDocDown(e) {
+      // Se clicar dentro do menu, ignora; fora, fecha
+      const m = document.querySelector('.mapa-edge-menu');
+      if (m && !m.contains(e.target)) setEdgeMenu(null);
+    }
+    function onKey(e) { if (e.key === 'Escape') setEdgeMenu(null); }
+    // Usa capture true para pegar antes do React Flow
+    document.addEventListener('mousedown', onDocDown, true);
+    document.addEventListener('keydown', onKey);
+    return () => {
+      document.removeEventListener('mousedown', onDocDown, true);
+      document.removeEventListener('keydown', onKey);
+    };
+  }, [edgeMenu]);
+
   const onConnect = useCallback((params) => {
-    setEdges((eds) => addEdge({ ...params, animated: true, type: 'default' }, eds));
+    if (!params.source || !params.target) return;
+    if (params.source === params.target) return; // bloqueia self-loop
+    setEdges((eds) => {
+      const key = edgePairKey(params.source, params.target);
+      const exists = eds.some((e) => edgePairKey(e.source, e.target) === key);
+      if (exists) return eds; // ignora duplicata
+      return addEdge({ ...params, animated: true, type: 'smoothstep' }, eds);
+    });
   }, []);
 
   const onConnectStart = useCallback((_e, { nodeId }) => {
@@ -429,7 +504,8 @@ function MapaEditor({ mapaId, onClose }) {
       id: `e_${sourceId}_${novo.id}`,
       source: sourceId,
       target: novo.id,
-      animated: true
+      animated: true,
+      type: 'smoothstep'
     }, eds));
   }, [rf, tipoAtual]);
 
@@ -447,7 +523,8 @@ function MapaEditor({ mapaId, onClose }) {
         id: `e_${selecionado}_${novo.id}`,
         source: selecionado,
         target: novo.id,
-        animated: true
+        animated: true,
+        type: 'smoothstep'
       }, eds));
     }
   }
@@ -469,7 +546,8 @@ function MapaEditor({ mapaId, onClose }) {
         id: `e_${parentId}_${novo.id}`,
         source: parentId,
         target: novo.id,
-        animated: true
+        animated: true,
+        type: 'smoothstep'
       }, eds));
       return [...curNodes, novo];
     });
@@ -574,13 +652,15 @@ function MapaEditor({ mapaId, onClose }) {
           edges={edges}
           nodeTypes={NODE_TYPES}
           connectionMode={ConnectionMode.Loose}
+          defaultEdgeOptions={{ type: 'smoothstep', animated: true }}
           onNodesChange={onNodesChange}
           onEdgesChange={onEdgesChange}
           onConnect={onConnect}
           onConnectStart={onConnectStart}
           onConnectEnd={onConnectEnd}
           onNodeClick={onNodeClick}
-          onPaneClick={() => setSelecionado(null)}
+          onEdgeContextMenu={onEdgeContextMenu}
+          onPaneClick={() => { setSelecionado(null); setEdgeMenu(null); }}
           fitView
           deleteKeyCode={['Delete', 'Backspace']}
           proOptions={{ hideAttribution: true }}
@@ -594,6 +674,32 @@ function MapaEditor({ mapaId, onClose }) {
             nodeColor={(n) => n.data?.cor || '#1B6FEE'}
           />
         </ReactFlow>
+
+        {edgeMenu && (
+          <div
+            className="mapa-edge-menu"
+            style={{ left: edgeMenu.x, top: edgeMenu.y }}
+            onClick={(e) => e.stopPropagation()}
+            role="menu"
+          >
+            <button
+              type="button"
+              className="mapa-edge-menu-item is-danger"
+              onClick={() => deletarEdge(edgeMenu.edgeId)}
+            >
+              <span className="mapa-edge-menu-icon" aria-hidden="true">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                  strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <polyline points="3 6 5 6 21 6" />
+                  <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
+                  <path d="M10 11v6M14 11v6" />
+                  <path d="M9 6V4a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2" />
+                </svg>
+              </span>
+              Deletar conexão
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );

@@ -36,16 +36,29 @@ export function ToastProvider({ children }) {
       variant: opts?.variant || 'info',
       duration: opts?.duration ?? 3000
     };
-    setItems((arr) => [...arr, t]);
+    setItems((arr) => {
+      // Limita a 3 toasts simultâneos: descarta os mais antigos
+      const novos = [...arr, t];
+      while (novos.length > 3) {
+        const removido = novos.shift();
+        const tm2 = timersRef.current.get(removido.id);
+        if (tm2) { clearTimeout(tm2); timersRef.current.delete(removido.id); }
+      }
+      return novos;
+    });
     const tm = setTimeout(() => dismiss(t.id), t.duration);
     timersRef.current.set(t.id, tm);
     return t.id;
   }, [dismiss]);
 
+  const warn = useCallback((msg, opts) => show({ message: msg, variant: 'warn', ...opts }), [show]);
+
   const api = {
     show,
     success: (msg, opts) => show({ message: msg, variant: 'success', ...opts }),
     error:   (msg, opts) => show({ message: msg, variant: 'error',   ...opts }),
+    warn,
+    warning: warn,
     info:    (msg, opts) => show({ message: msg, variant: 'info',    ...opts }),
     dismiss
   };
@@ -73,6 +86,7 @@ export function ToastProvider({ children }) {
               <span className="toast-icon" aria-hidden="true">
                 {t.variant === 'success' && '✓'}
                 {t.variant === 'error' && '!'}
+                {t.variant === 'warn' && '⚠'}
                 {t.variant === 'info' && 'i'}
               </span>
               <span className="toast-message">{t.message}</span>

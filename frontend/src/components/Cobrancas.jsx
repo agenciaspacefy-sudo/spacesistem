@@ -130,7 +130,7 @@ export default function Cobrancas() {
         ? parseInt(form.duracao_custom, 10)
         : parseInt(form.duracao_preset, 10);
       if (!n || n < 1) {
-        alert('Informe uma duração válida em meses (mínimo 1).');
+        toast.error('Informe uma duração válida em meses (mínimo 1).');
         return;
       }
       payload.duracao_meses = n;
@@ -194,7 +194,7 @@ export default function Cobrancas() {
 
   async function handleSendWa(cob) {
     if (!cob.cliente_whatsapp) {
-      alert('Cliente sem WhatsApp cadastrado.');
+      toast.warn('Cliente sem WhatsApp cadastrado.');
       return;
     }
     window.open(buildWaUrl(cob.cliente_whatsapp, buildMessageFor(cob)), '_blank');
@@ -321,8 +321,8 @@ export default function Cobrancas() {
     const { grupo, form: ef, pagasCount } = editingGroup;
 
     const valor = Number(ef.valor);
-    if (!valor || valor <= 0) { alert('Informe um valor válido.'); return; }
-    if (!ef.vencimento) { alert('Informe a data de vencimento base.'); return; }
+    if (!valor || valor <= 0) { toast.error('Informe um valor válido.'); return; }
+    if (!ef.vencimento) { toast.error('Informe a data de vencimento base.'); return; }
 
     let duration = 1;
     if (ef.tipo === 'Recorrência Mensal') {
@@ -330,7 +330,7 @@ export default function Cobrancas() {
         ? parseInt(ef.duracao_custom, 10)
         : parseInt(ef.duracao_preset, 10);
       if (!duration || duration < 1) {
-        alert('Informe uma duração válida em meses (mínimo 1).');
+        toast.error('Informe uma duração válida em meses (mínimo 1).');
         return;
       }
     }
@@ -380,7 +380,7 @@ export default function Cobrancas() {
       setEditingGroup(null);
       await load();
     } catch (e) {
-      alert('Erro ao salvar alterações: ' + (e?.message || e));
+      toast.error('Erro ao salvar alterações: ' + (e?.message || e));
     } finally {
       setSavingEdit(false);
     }

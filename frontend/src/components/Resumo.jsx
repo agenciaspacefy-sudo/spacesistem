@@ -3,12 +3,14 @@ import { api } from '../api/client.js';
 import { monthLabel } from '../utils.js';
 import { useFormatBRL } from '../PrivacyContext.jsx';
 import { useSettings } from '../SettingsContext.jsx';
+import { useToast } from '../ToastContext.jsx';
 import { generateMonthlyReport } from '../reportPdf.js';
 import RevenueChart from './RevenueChart.jsx';
 
 export default function Resumo({ mesFiltro }) {
   const fmtBRL = useFormatBRL();
   const { settings } = useSettings();
+  const toast = useToast();
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(false);
   const [exporting, setExporting] = useState(false);
@@ -60,7 +62,7 @@ export default function Resumo({ mesFiltro }) {
         settings
       });
     } catch (e) {
-      alert('Erro ao gerar PDF: ' + (e?.message || e));
+      toast.error('Erro ao gerar PDF: ' + (e?.message || e));
     } finally {
       setExporting(false);
     }

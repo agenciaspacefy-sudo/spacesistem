@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { api } from '../api/client.js';
 import { useConfirm } from '../ConfirmContext.jsx';
+import { useToast } from '../ToastContext.jsx';
 import { useFormatBRL } from '../PrivacyContext.jsx';
 import { formatDate, todayISO } from '../utils.js';
 import {
@@ -15,6 +16,7 @@ import {
 export default function CampanhaDetalheDrawer({ campanha, clientes, onClose, onSave, onDelete }) {
   const fmtBRL = useFormatBRL();
   const confirm = useConfirm();
+  const toast = useToast();
   const [form, setForm] = useState(() => ({
     cliente_id: campanha.cliente_id ?? '',
     nome: campanha.nome ?? '',
@@ -67,7 +69,7 @@ export default function CampanhaDetalheDrawer({ campanha, clientes, onClose, onS
       const updated = await api.updateCampanha(campanha.id, payload);
       onSave(updated);
     } catch (err) {
-      alert('Erro ao salvar: ' + err.message);
+      toast.error('Erro ao salvar: ' + err.message);
     } finally {
       setSaving(false);
     }
@@ -103,7 +105,7 @@ export default function CampanhaDetalheDrawer({ campanha, clientes, onClose, onS
       }
       setReuForm(null);
     } catch (err) {
-      alert('Erro ao salvar reunião: ' + err.message);
+      toast.error('Erro ao salvar reunião: ' + err.message);
     }
   }
 

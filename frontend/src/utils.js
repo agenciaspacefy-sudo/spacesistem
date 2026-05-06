@@ -3,6 +3,41 @@ export function formatBRL(value) {
   return n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 }
 
+/**
+ * Copia texto para a área de transferência sem usar window.prompt.
+ * Retorna Promise<boolean> — true em caso de sucesso.
+ * Tenta navigator.clipboard primeiro; em ambientes sem (http inseguro,
+ * iframes etc.) cai para document.execCommand('copy') com textarea
+ * temporário. Nunca abre prompt do navegador.
+ */
+export async function copyToClipboard(text) {
+  if (!text) return false;
+  // Caminho moderno
+  try {
+    if (navigator.clipboard?.writeText) {
+      await navigator.clipboard.writeText(text);
+      return true;
+    }
+  } catch {}
+
+  // Fallback antigo via execCommand
+  try {
+    const ta = document.createElement('textarea');
+    ta.value = text;
+    ta.setAttribute('readonly', '');
+    ta.style.position = 'absolute';
+    ta.style.left = '-9999px';
+    ta.style.top = '0';
+    document.body.appendChild(ta);
+    ta.select();
+    const ok = document.execCommand('copy');
+    document.body.removeChild(ta);
+    return ok;
+  } catch {
+    return false;
+  }
+}
+
 // ---------- Máscaras do modo privacidade (👁) ----------
 // Usadas APENAS em telas de exibição. Exports (PDF/WhatsApp) continuam com
 // o valor real via formatBRL / cob.cliente_whatsapp / cob.cliente_cnpj.

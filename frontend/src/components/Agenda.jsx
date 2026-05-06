@@ -9,6 +9,7 @@ import {
 } from '@dnd-kit/core';
 import { api } from '../api/client.js';
 import { useConfirm } from '../ConfirmContext.jsx';
+import { useToast } from '../ToastContext.jsx';
 import InviteFuncionarioModal from './InviteFuncionarioModal.jsx';
 
 // ---------- Paleta de cores disponíveis ----------
@@ -209,6 +210,7 @@ function SlotDroppable({ id, children, onClick }) {
 // Modal de criar/editar evento
 // ==========================================================================
 function EventoModal({ evento, clientes, onClose, onSave, onDelete }) {
+  const toast = useToast();
   const isEdit = !!evento?.id;
   const [form, setForm] = useState(() => ({
     titulo: evento?.titulo ?? '',
@@ -231,7 +233,7 @@ function EventoModal({ evento, clientes, onClose, onSave, onDelete }) {
     if (!form.titulo.trim()) return;
     if (!form.inicio || !form.fim) return;
     if (new Date(form.inicio) >= new Date(form.fim)) {
-      alert('A data/hora de fim deve ser depois do início.');
+      toast.error('A data/hora de fim deve ser depois do início.');
       return;
     }
     onSave({
@@ -359,6 +361,7 @@ function EventoModal({ evento, clientes, onClose, onSave, onDelete }) {
 // ==========================================================================
 export default function Agenda() {
   const confirm = useConfirm();
+  const toast = useToast();
   const [visao, setVisao] = useState('semana'); // 'dia' | 'semana' | 'mes'
   const [cursor, setCursor] = useState(() => startOfDay(new Date()));
   const [eventos, setEventos] = useState([]);
@@ -438,7 +441,7 @@ export default function Agenda() {
       }
       setModal(null);
     } catch (e) {
-      alert('Erro ao salvar evento: ' + (e?.message || e));
+      toast.error('Erro ao salvar evento: ' + (e?.message || e));
     }
   }
 
@@ -458,7 +461,7 @@ export default function Agenda() {
       setEventos((xs) => xs.filter((e) => e.id !== modal.evento.id));
       setModal(null);
     } catch (e) {
-      alert('Erro ao excluir: ' + (e?.message || e));
+      toast.error('Erro ao excluir: ' + (e?.message || e));
     }
   }
 
@@ -483,7 +486,7 @@ export default function Agenda() {
     // Atualiza otimisticamente
     setEventos((xs) => xs.map((e) => (e.id === ocorrencia.id ? { ...e, ...payload } : e)));
     api.updateEvento(ocorrencia.id, payload).catch((err) => {
-      alert('Erro ao mover evento: ' + (err?.message || err));
+      toast.error('Erro ao mover evento: ' + (err?.message || err));
       load();
     });
   }

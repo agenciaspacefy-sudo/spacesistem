@@ -18,6 +18,7 @@ import {
 } from '../utils.js';
 import { useFormatBRL, usePrivacy } from '../PrivacyContext.jsx';
 import { useSettings } from '../SettingsContext.jsx';
+import { useToast } from '../ToastContext.jsx';
 import { generateMonthlyReport } from '../reportPdf.js';
 import RecebimentosChart from './RecebimentosChart.jsx';
 
@@ -285,6 +286,7 @@ export default function Dashboard({ onNavigate }) {
 // =========================================================
 function ResumoAnualSection({ resumo, fmtBRL }) {
   const { settings } = useSettings();
+  const toast = useToast();
   const [anoFiltro, setAnoFiltro] = useState(() => new Date().getFullYear());
   const [exporting, setExporting] = useState(false);
 
@@ -332,7 +334,7 @@ function ResumoAnualSection({ resumo, fmtBRL }) {
         settings
       });
     } catch (e) {
-      alert('Erro ao gerar PDF: ' + (e?.message || e));
+      toast.error('Erro ao gerar PDF: ' + (e?.message || e));
     } finally { setExporting(false); }
   }
 

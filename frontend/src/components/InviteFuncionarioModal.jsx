@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { api } from '../api/client.js';
 import { useToast } from '../ToastContext.jsx';
+import { copyToClipboard } from '../utils.js';
 
 const ABAS = [
   { id: 'conteudo', label: 'Conteúdo' },
@@ -78,12 +79,12 @@ export default function InviteFuncionarioModal({ aba, onClose }) {
       `mailto:${encodeURIComponent(form.email)}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
   }
 
-  function copiar() {
+  async function copiar() {
     if (!conviteCriado) return;
     const link = buildLink(conviteCriado.token);
-    navigator.clipboard?.writeText(link)
-      .then(() => toast?.success('Link copiado!'))
-      .catch(() => window.prompt('Copie o link:', link));
+    const ok = await copyToClipboard(link);
+    if (ok) toast?.success('Link copiado!');
+    else toast?.warn('Não foi possível copiar — selecione o link manualmente.');
   }
 
   return (

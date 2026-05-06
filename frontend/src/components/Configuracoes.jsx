@@ -2,11 +2,13 @@ import { useEffect, useState } from 'react';
 import { useSettings } from '../SettingsContext.jsx';
 import { api } from '../api/client.js';
 import { useConfirm } from '../ConfirmContext.jsx';
+import { useToast } from '../ToastContext.jsx';
 
 const VARS = ['{nome_cliente}', '{valor}', '{vencimento}', '{chave_pix}'];
 
 export default function Configuracoes() {
   const { settings, save } = useSettings();
+  const toast = useToast();
   const [form, setForm] = useState(settings);
   const [savedFlash, setSavedFlash] = useState(false);
   const [salvando, setSalvando] = useState(false);
@@ -33,7 +35,7 @@ export default function Configuracoes() {
     const file = e.target.files?.[0];
     if (!file) return;
     if (file.size > 1024 * 1024) {
-      alert('Logo deve ter até 1 MB.');
+      toast.error('Logo deve ter até 1 MB.');
       return;
     }
     const reader = new FileReader();

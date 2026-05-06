@@ -5,6 +5,9 @@ import {
   Background,
   Controls,
   MiniMap,
+  Handle,
+  Position,
+  ConnectionMode,
   addEdge,
   applyEdgeChanges,
   applyNodeChanges,
@@ -25,9 +28,9 @@ const NODE_TIPOS = [
 ];
 const TIPO_BY_ID = Object.fromEntries(NODE_TIPOS.map((t) => [t.id, t]));
 
-let _id = 1;
+let _idSeed = 1;
 function nextId() {
-  return `n_${Date.now().toString(36)}_${(_id++).toString(36)}`;
+  return `n_${Date.now().toString(36)}_${(_idSeed++).toString(36)}`;
 }
 
 function makeNode({ id, x, y, label, tipo = 'estrategia' }) {
@@ -40,22 +43,114 @@ function makeNode({ id, x, y, label, tipo = 'estrategia' }) {
   };
 }
 
-// ---------- Custom node ----------
-function MapaNode({ data, selected }) {
+// =========================================================
+// Custom node — com handles + edição inline + botão "+"
+// =========================================================
+function MapaNode({ id, data, selected }) {
+  const [editando, setEditando] = useState(false);
+  const [valor, setValor] = useState(data.label || '');
+  const inputRef = useRef(null);
+
+  // Mantém o valor sincronizado se a label mudar externamente
+  useEffect(() => { setValor(data.label || ''); }, [data.label]);
+
+  // Foca no input ao começar a editar e seleciona texto
+  useEffect(() => {
+    if (editando && inputRef.current) {
+      inputRef.current.focus();
+      inputRef.current.select();
+    }
+  }, [editando]);
+
+  function comecarEdicao(e) {
+    if (e) {
+      e.stopPropagation();
+      e.preventDefault();
+    }
+    setEditando(true);
+  }
+
+  function confirmar() {
+    const limpo = valor.trim() || 'Sem texto';
+    data.onLabelChange?.(id, limpo);
+    setValor(limpo);
+    setEditando(false);
+  }
+
+  function cancelar() {
+    setValor(data.label || '');
+    setEditando(false);
+  }
+
+  function onInputKeyDown(e) {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      confirmar();
+    } else if (e.key === 'Escape') {
+      e.preventDefault();
+      cancelar();
+    }
+    // Bloqueia delete/backspace de propagar para React Flow (que apaga o nó)
+    e.stopPropagation();
+  }
+
+  function handleAddChild(e) {
+    e.stopPropagation();
+    data.onAddChild?.(id);
+  }
+
   return (
     <div
       className={`mapa-node ${selected ? 'is-selected' : ''}`}
       style={{ borderColor: data.cor, color: data.cor }}
-      title={`${TIPO_BY_ID[data.tipo]?.label || ''}`}
+      onDoubleClick={comecarEdicao}
+      title={editando ? '' : 'Duplo clique para editar'}
     >
+      {/* Handles invisíveis em todos os lados (source + target) */}
+      <Handle type="target" position={Position.Top}    id="t" className="mapa-handle" />
+      <Handle type="target" position={Position.Left}   id="l" className="mapa-handle" />
+      <Handle type="source" position={Position.Right}  id="r" className="mapa-handle" />
+      <Handle type="source" position={Position.Bottom} id="b" className="mapa-handle" />
+
       <span className="mapa-node-dot" style={{ background: data.cor }} />
-      <span className="mapa-node-label">{data.label || 'Sem texto'}</span>
+
+      {editando ? (
+        <input
+          ref={inputRef}
+          className="mapa-node-input"
+          value={valor}
+          onChange={(e) => setValor(e.target.value)}
+          onKeyDown={onInputKeyDown}
+          onBlur={confirmar}
+          onClick={(e) => e.stopPropagation()}
+          onDoubleClick={(e) => e.stopPropagation()}
+          onMouseDown={(e) => e.stopPropagation()}
+          style={{ color: data.cor }}
+          maxLength={120}
+        />
+      ) : (
+        <span className="mapa-node-label">{data.label || 'Sem texto'}</span>
+      )}
+
+      {/* Botão "+" para criar nó filho conectado automaticamente */}
+      <button
+        type="button"
+        className="mapa-node-add"
+        title="Adicionar nó conectado"
+        aria-label="Adicionar nó conectado"
+        onClick={handleAddChild}
+        onMouseDown={(e) => e.stopPropagation()}
+      >
+        +
+      </button>
     </div>
   );
 }
 const NODE_TYPES = { mapaNode: MapaNode };
 
-// ---------- Componente principal ----------
+// =========================================================
+// Listagem de mapas + roteador para o editor
+// =========================================================
 export default function MapaMental() {
   const confirm = useConfirm();
   const toast = useToast();
@@ -84,23 +179,27 @@ export default function MapaMental() {
   async function criarMapa(e) {
     e.preventDefault();
     if (!novoNome.trim()) return;
-    const cli = clientes.find((c) => String(c.id) === novoCliente);
-    const centroLabel = cli?.nome || novoNome.trim();
-    const initial = {
-      nodes: [makeNode({ x: 200, y: 200, label: centroLabel, tipo: 'estrategia' })],
-      edges: []
-    };
-    const m = await api.createMapa({
-      cliente_id: novoCliente ? Number(novoCliente) : null,
-      nome: novoNome.trim(),
-      data: initial
-    });
-    setShowNovo(false);
-    setNovoNome('');
-    setNovoCliente('');
-    toast?.success('Mapa criado!');
-    await load();
-    setEditandoMapa(m.id);
+    try {
+      const cli = clientes.find((c) => String(c.id) === novoCliente);
+      const centroLabel = cli?.nome || novoNome.trim();
+      const initial = {
+        nodes: [makeNode({ x: 200, y: 200, label: centroLabel, tipo: 'estrategia' })],
+        edges: []
+      };
+      const m = await api.createMapa({
+        cliente_id: novoCliente ? Number(novoCliente) : null,
+        nome: novoNome.trim(),
+        data: initial
+      });
+      setShowNovo(false);
+      setNovoNome('');
+      setNovoCliente('');
+      toast?.success('Mapa criado!');
+      await load();
+      setEditandoMapa(m.id);
+    } catch (err) {
+      toast?.error('Falha ao criar: ' + (err?.message || err));
+    }
   }
 
   async function excluirMapa(m) {
@@ -160,7 +259,9 @@ export default function MapaMental() {
                 <h4 className="mapa-card-name">{m.nome}</h4>
                 <div className="mapa-card-meta">
                   {m.cliente_nome ? `${m.cliente_nome} · ` : ''}
-                  {new Date(m.updated_at?.replace(' ', 'T') + 'Z').toLocaleDateString('pt-BR')}
+                  {m.updated_at
+                    ? new Date(m.updated_at.replace(' ', 'T') + 'Z').toLocaleDateString('pt-BR')
+                    : ''}
                 </div>
                 <div className="mapa-card-actions">
                   <button className="btn btn-sm btn-ghost" onClick={() => setEditandoMapa(m.id)}>Editar</button>
@@ -226,19 +327,51 @@ function MapaEditor({ mapaId, onClose }) {
   const [exporting, setExporting] = useState(false);
   const rf = useReactFlow();
   const initialLoaded = useRef(false);
+  const connectingFromRef = useRef(null); // nodeId do qual o usuário está puxando uma conexão
 
+  // Wrappers que enriquecem cada node com callbacks (label change + add child)
+  const onLabelChange = useCallback((nodeId, novaLabel) => {
+    setNodes((nds) => nds.map((n) =>
+      n.id === nodeId ? { ...n, data: { ...n.data, label: novaLabel } } : n
+    ));
+  }, []);
+
+  const onAddChildRef = useRef(null);
+  const onAddChild = useCallback((parentId) => {
+    onAddChildRef.current?.(parentId);
+  }, []);
+
+  // Liga nodes -> data com callbacks (mantém referência viva ao tipo atual)
+  const enrichedNodes = useMemo(() =>
+    nodes.map((n) => ({
+      ...n,
+      data: {
+        ...n.data,
+        onLabelChange,
+        onAddChild
+      }
+    })),
+    [nodes, onLabelChange, onAddChild]
+  );
+
+  // Carrega mapa
   useEffect(() => {
     let cancelled = false;
     (async () => {
-      const m = await api.getMapa(mapaId);
-      if (cancelled) return;
-      setMapa(m);
-      const data = m.data || {};
-      setNodes(data.nodes || []);
-      setEdges(data.edges || []);
-      initialLoaded.current = true;
+      try {
+        const m = await api.getMapa(mapaId);
+        if (cancelled) return;
+        setMapa(m);
+        const data = m.data || {};
+        setNodes(data.nodes || []);
+        setEdges(data.edges || []);
+        initialLoaded.current = true;
+      } catch (e) {
+        toast?.error('Falha ao abrir: ' + (e?.message || e));
+      }
     })();
     return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mapaId]);
 
   // Auto-save debounced
@@ -260,9 +393,47 @@ function MapaEditor({ mapaId, onClose }) {
 
   const onNodesChange = useCallback((changes) => setNodes((nds) => applyNodeChanges(changes, nds)), []);
   const onEdgesChange = useCallback((changes) => setEdges((eds) => applyEdgeChanges(changes, eds)), []);
-  const onConnect = useCallback((params) => setEdges((eds) => addEdge({ ...params, animated: true }, eds)), []);
 
-  function adicionarNo() {
+  const onConnect = useCallback((params) => {
+    setEdges((eds) => addEdge({ ...params, animated: true, type: 'default' }, eds));
+  }, []);
+
+  const onConnectStart = useCallback((_e, { nodeId }) => {
+    connectingFromRef.current = nodeId;
+  }, []);
+
+  // Cria nó "no vazio" quando o usuário arrasta a conexão para fora de qualquer nó
+  const onConnectEnd = useCallback((event) => {
+    const sourceId = connectingFromRef.current;
+    connectingFromRef.current = null;
+    if (!sourceId) return;
+    // Se soltou em cima de um handle, o React Flow trata via onConnect
+    const target = event?.target;
+    const droppedOnPane = target?.classList?.contains?.('react-flow__pane');
+    if (!droppedOnPane) return;
+
+    const t = TIPO_BY_ID[tipoAtual] || TIPO_BY_ID.estrategia;
+    // Posiciona onde o mouse soltou (em coordenadas do flow)
+    const clientX = event?.clientX ?? event?.changedTouches?.[0]?.clientX;
+    const clientY = event?.clientY ?? event?.changedTouches?.[0]?.clientY;
+    const pos = rf.screenToFlowPosition({ x: clientX, y: clientY });
+
+    const novo = makeNode({
+      x: pos.x - 60,
+      y: pos.y - 18,
+      label: t.label,
+      tipo: tipoAtual
+    });
+    setNodes((nds) => [...nds, novo]);
+    setEdges((eds) => addEdge({
+      id: `e_${sourceId}_${novo.id}`,
+      source: sourceId,
+      target: novo.id,
+      animated: true
+    }, eds));
+  }, [rf, tipoAtual]);
+
+  function adicionarNoSolto() {
     const t = TIPO_BY_ID[tipoAtual] || TIPO_BY_ID.estrategia;
     const novo = makeNode({
       x: 250 + Math.random() * 300,
@@ -281,6 +452,31 @@ function MapaEditor({ mapaId, onClose }) {
     }
   }
 
+  // Adiciona nó filho conectado a partir do botão "+" do node
+  const adicionarFilhoDe = useCallback((parentId) => {
+    setNodes((curNodes) => {
+      const parent = curNodes.find((n) => n.id === parentId);
+      if (!parent) return curNodes;
+      const t = TIPO_BY_ID[tipoAtual] || TIPO_BY_ID.estrategia;
+      const novo = makeNode({
+        x: parent.position.x + 180,
+        y: parent.position.y + 60 + Math.random() * 40 - 20,
+        label: t.label,
+        tipo: tipoAtual
+      });
+      // Conecta via setEdges em outro effect (melhor garantir node existe)
+      setEdges((eds) => addEdge({
+        id: `e_${parentId}_${novo.id}`,
+        source: parentId,
+        target: novo.id,
+        animated: true
+      }, eds));
+      return [...curNodes, novo];
+    });
+  }, [tipoAtual]);
+
+  useEffect(() => { onAddChildRef.current = adicionarFilhoDe; }, [adicionarFilhoDe]);
+
   function deletarSelecionado() {
     if (!selecionado) return;
     setEdges((eds) => eds.filter((e) => e.source !== selecionado && e.target !== selecionado));
@@ -295,14 +491,6 @@ function MapaEditor({ mapaId, onClose }) {
     if (!ok) return;
     setNodes([]);
     setEdges([]);
-  }
-
-  function onNodeDoubleClick(e, node) {
-    const novo = window.prompt('Texto do nó:', node.data.label);
-    if (novo == null) return;
-    setNodes((nds) => nds.map((n) =>
-      n.id === node.id ? { ...n, data: { ...n.data, label: novo } } : n
-    ));
   }
 
   function onNodeClick(_e, node) {
@@ -329,7 +517,6 @@ function MapaEditor({ mapaId, onClose }) {
         cacheBust: true,
         pixelRatio: 2
       });
-      // Atualiza thumbnail no banco (opcional, fire-and-forget)
       try { await api.updateMapa(mapaId, { thumbnail: dataUrl }); } catch {}
       const a = document.createElement('a');
       a.href = dataUrl;
@@ -360,6 +547,7 @@ function MapaEditor({ mapaId, onClose }) {
             {NODE_TIPOS.map((t) => (
               <button
                 key={t.id}
+                type="button"
                 className={`mapa-tipo-pill ${tipoAtual === t.id ? 'is-active' : ''}`}
                 style={tipoAtual === t.id ? { background: t.cor, borderColor: t.cor, color: '#fff' } : { color: t.cor }}
                 onClick={() => trocarTipoSelecionado(t.id)}
@@ -369,7 +557,7 @@ function MapaEditor({ mapaId, onClose }) {
               </button>
             ))}
           </div>
-          <button className="btn btn-sm btn-primary" onClick={adicionarNo}>+ Nó</button>
+          <button className="btn btn-sm btn-primary" onClick={adicionarNoSolto}>+ Nó</button>
           <button className="btn btn-sm btn-ghost btn-danger" onClick={deletarSelecionado} disabled={!selecionado}>
             Deletar
           </button>
@@ -382,14 +570,16 @@ function MapaEditor({ mapaId, onClose }) {
 
       <div className="mapa-editor-canvas" ref={wrapRef}>
         <ReactFlow
-          nodes={nodes}
+          nodes={enrichedNodes}
           edges={edges}
           nodeTypes={NODE_TYPES}
+          connectionMode={ConnectionMode.Loose}
           onNodesChange={onNodesChange}
           onEdgesChange={onEdgesChange}
           onConnect={onConnect}
+          onConnectStart={onConnectStart}
+          onConnectEnd={onConnectEnd}
           onNodeClick={onNodeClick}
-          onNodeDoubleClick={onNodeDoubleClick}
           onPaneClick={() => setSelecionado(null)}
           fitView
           deleteKeyCode={['Delete', 'Backspace']}

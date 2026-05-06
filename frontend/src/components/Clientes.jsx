@@ -3,6 +3,7 @@ import { api } from '../api/client.js';
 import EditableCell from './EditableCell.jsx';
 import { useConfirm } from '../ConfirmContext.jsx';
 import { useFormatCnpj, useFormatWhatsapp } from '../PrivacyContext.jsx';
+import { copyToClipboard } from '../utils.js';
 import ClienteHistoricoDrawer from './ClienteHistoricoDrawer.jsx';
 import ClienteDetalheDrawer from './ClienteDetalheDrawer.jsx';
 
@@ -264,13 +265,10 @@ function RelatorioLinkModal({ cliente, onClose, onTokenChange }) {
 
   async function handleCopy() {
     if (!link) return;
-    try {
-      await navigator.clipboard.writeText(link);
+    const ok = await copyToClipboard(link);
+    if (ok) {
       setCopied(true);
       setTimeout(() => setCopied(false), 1500);
-    } catch {
-      // fallback: select via prompt
-      window.prompt('Copie o link:', link);
     }
   }
 

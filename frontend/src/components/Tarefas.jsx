@@ -10,6 +10,7 @@ import {
 import { api } from '../api/client.js';
 import { formatDate, todayISO } from '../utils.js';
 import { useConfirm } from '../ConfirmContext.jsx';
+import { useToast } from '../ToastContext.jsx';
 import InviteFuncionarioModal from './InviteFuncionarioModal.jsx';
 
 const COLUNAS = [
@@ -169,6 +170,7 @@ function Coluna({ coluna, tarefas, onDelete, onMoveNext, onEdit }) {
 
 export default function Tarefas() {
   const confirm = useConfirm();
+  const toast = useToast();
   const [tarefas, setTarefas] = useState([]);
   const [clientes, setClientes] = useState([]);
   const [showForm, setShowForm] = useState(false);
@@ -239,7 +241,7 @@ export default function Tarefas() {
   async function handleSaveEdit() {
     if (!editingTarefa) return;
     const { id, form: ef } = editingTarefa;
-    if (!ef.titulo.trim()) { alert('Informe um título.'); return; }
+    if (!ef.titulo.trim()) { toast.error('Informe um título.'); return; }
 
     setSavingEdit(true);
     try {
@@ -253,7 +255,7 @@ export default function Tarefas() {
       setTarefas((ts) => ts.map((t) => (t.id === id ? updated : t)));
       setEditingTarefa(null);
     } catch (e) {
-      alert('Erro ao salvar: ' + (e?.message || e));
+      toast.error('Erro ao salvar: ' + (e?.message || e));
     } finally {
       setSavingEdit(false);
     }

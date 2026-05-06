@@ -2,6 +2,8 @@ import { useEffect, useMemo, useState } from 'react';
 import { api } from '../api/client.js';
 import { useFormatBRL } from '../PrivacyContext.jsx';
 import { useConfirm } from '../ConfirmContext.jsx';
+import { useToast } from '../ToastContext.jsx';
+import { copyToClipboard } from '../utils.js';
 import CampanhaDetalheDrawer from './CampanhaDetalheDrawer.jsx';
 
 // -------------- Constantes --------------
@@ -55,6 +57,7 @@ function emptyForm() {
 }
 
 function CampanhaFormModal({ clientes, onClose, onSave }) {
+  const toast = useToast();
   const [form, setForm] = useState(emptyForm());
   const [saving, setSaving] = useState(false);
 
@@ -82,7 +85,7 @@ function CampanhaFormModal({ clientes, onClose, onSave }) {
       onSave(created);
       onClose();
     } catch (err) {
-      alert('Erro ao criar campanha: ' + err.message);
+      toast.error('Erro ao criar campanha: ' + err.message);
     } finally {
       setSaving(false);
     }
@@ -238,12 +241,13 @@ function CampanhaCard({ c, onOpen, onInvite, fmtBRL }) {
           <button
             type="button"
             className="campanha-card-link-copy"
-            onClick={(e) => {
+            onClick={async (e) => {
               e.stopPropagation();
               const link = `${window.location.origin}/campanha/${c.acesso_token}`;
-              navigator.clipboard?.writeText(link).catch(() => window.prompt('Copie:', link));
-              e.currentTarget.textContent = '✓';
-              setTimeout(() => { try { e.currentTarget.textContent = 'Copiar'; } catch {} }, 1200);
+              const btn = e.currentTarget;
+              const ok = await copyToClipboard(link);
+              btn.textContent = ok ? '✓' : 'Falhou';
+              setTimeout(() => { try { btn.textContent = 'Copiar'; } catch {} }, 1200);
             }}
           >
             Copiar
@@ -305,12 +309,13 @@ function CampanhaInviteModal({ campanha, onClose, onTokenChange }) {
     } finally { setBusy(false); }
   }
 
-  function handleCopy() {
+  async function handleCopy() {
     if (!link) return;
-    navigator.clipboard?.writeText(link).then(() => {
+    const ok = await copyToClipboard(link);
+    if (ok) {
       setCopied(true);
       setTimeout(() => setCopied(false), 1500);
-    }).catch(() => window.prompt('Copie o link:', link));
+    }
   }
 
   function abrirEmail() {

@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { api } from '../api/client.js';
 import { useFormatCnpj, useFormatWhatsapp } from '../PrivacyContext.jsx';
+import { useToast } from '../ToastContext.jsx';
 
 // Catálogo fixo de serviços oferecidos pela Spacefy
 export const SERVICOS_CATALOGO = [
@@ -22,6 +23,7 @@ const SERVICO_OUTROS = 'outros';
 export default function ClienteDetalheDrawer({ cliente, onClose, onChangeServicosCount, onChangeObservacoes }) {
   const fmtCnpj = useFormatCnpj();
   const fmtWhatsapp = useFormatWhatsapp();
+  const toast = useToast();
   const [servicos, setServicos] = useState([]); // [{ servico, custom_text }]
   const [loadingServicos, setLoadingServicos] = useState(true);
   const [observacoes, setObservacoes] = useState(cliente.observacoes || '');
@@ -97,7 +99,7 @@ export default function ClienteDetalheDrawer({ cliente, onClose, onChangeServico
         if (novoAtivo) return prev.filter((s) => s.servico !== servicoId);
         return [...prev, { servico: servicoId, custom_text: null }];
       });
-      alert('Falha ao salvar: ' + e.message);
+      toast.error('Falha ao salvar: ' + e.message);
     }
   }
 
@@ -137,7 +139,7 @@ export default function ClienteDetalheDrawer({ cliente, onClose, onChangeServico
         setTimeout(() => setObsStatus('idle'), 1200);
       } catch (e) {
         setObsStatus('idle');
-        alert('Falha ao salvar observações: ' + e.message);
+        toast.error('Falha ao salvar observações: ' + e.message);
       }
     }, 600);
   }
